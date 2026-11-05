@@ -1,0 +1,39 @@
+{
+  "name": "attaie-admin",
+  "version": "1.0.0",
+  "description": "Attaie Properties Admin — CRM Dashboard",
+  "private": true,
+  "type": "module",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "pack": "npm run build && electron-builder",
+    "web:dev": "vite --config vite.config.ts",
+    "web:build": "tsc -b && vite build --config vite.config.ts",
+    "preview": "vite preview --config vite.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.18.5"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^6.2.1",
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.5.3",
+    "vite": "^8.3.5"
+  },
+  "overrides": {
+    "esbuild": "^0.25.0",
+    "react-router": "^7.18.5",
+    "react-router-dom": "^7.18.5",
+    "vite": "^8.3.5"
+  }
+}
+
