@@ -10,7 +10,6 @@ import { MapPin, Calendar, Home, ArrowLeft } from 'lucide-react';
 import { getProject, type Project } from '../lib/dbService';
 import { ClickToCallButton } from '../components/ui/ClickToCallButton';
 import { VisitRequestDialog } from '../components/forms/VisitRequestDialog';
-import { ProjectUnitsSection } from '../components/project/ProjectUnitsSection';
 import { ImageGallery } from '../components/property/ImageGallery';
 import { VideoPlayer } from '../components/property/VideoPlayer';
 import { SeoHead } from '../components/seo/SeoHead';
@@ -170,6 +169,13 @@ export default function ProjectDetailPage() {
               {projectImages.length > 0 && <div className="mb-8"><ImageGallery images={projectImages} alt={project.name} /></div>}
               {project.video_url && <div className="mb-8"><VideoPlayer url={project.video_url} title={`${project.name} project tour`} /></div>}
 
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+                <div className="rounded-xl bg-white p-4"><p className="text-xs text-neutral-500">Project Type</p><p className="font-semibold">{project.project_type || 'Residential'}</p></div>
+                <div className="rounded-xl bg-white p-4"><p className="text-xs text-neutral-500">Total Area</p><p className="font-semibold">{project.total_area ? `${Number(project.total_area).toLocaleString()} m²` : '—'}</p></div>
+                <div className="rounded-xl bg-white p-4"><p className="text-xs text-neutral-500">Building Area</p><p className="font-semibold">{project.building_area ? `${Number(project.building_area).toLocaleString()} m²` : '—'}</p></div>
+                <div className="rounded-xl bg-white p-4"><p className="text-xs text-neutral-500">Construction Progress</p><p className="font-semibold">{project.construction_progress ?? 0}%</p></div>
+              </div>
+              {project.masterplan_image && <div className="mb-8"><h2 className="text-xl font-bold mb-3">Project Master Plan</h2><img src={project.masterplan_image} alt={`${project.name} master plan`} className="w-full rounded-xl" loading="lazy" /></div>}
               {project.description && (
                 <motion.div
                   initial={{ opacity: 0, y: 16 }}
@@ -186,7 +192,7 @@ export default function ProjectDetailPage() {
                   <p className="text-neutral-600 leading-relaxed text-lg">{project.description}</p>
                 </motion.div>
               )}
-              <ProjectUnitsSection projectId={project.id} projectName={project.name} masterplanImage={project.masterplan_image} />
+
             </div>
 
             <aside className="w-full lg:w-96 shrink-0">
