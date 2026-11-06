@@ -141,6 +141,18 @@ if ($width > 12000 || $height > 12000 || ($width * $height) > 100000000) {
 }
 
 $ext = $mimeToExt[$realMime];
+$originalBytes = strlen($rawBytes);
+require_once __DIR__ . '/image-optimizer.php';
+$optimized = optimize_uploaded_image($rawBytes, $realMime, $width, $height, $purpose);
+if ($optimized !== null) {
+    $rawBytes = $optimized['bytes'];
+    $ext = $optimized['ext'];
+    $realMime = $optimized['mime'];
+    $width = $optimized['width'];
+    $height = $optimized['height'];
+    // Converted bytes must be saved rather than moving the unconverted upload.
+    $tmpFilePath = null;
+}
 
 $uploadDir = __DIR__ . '/../../uploads/';
 if (!is_dir($uploadDir)) {
@@ -164,4 +176,12 @@ if (!$saved) {
 }
 
 @chmod($dest, 0644);
-json_out(['url' => '/uploads/' . $filename]);
+json_out([
+    'url' => '/uploads/' . $filename,
+    'mime' => $realMime,
+    'width' => $width,
+    'height' => $height,
+    'original_bytes' => $originalBytes,
+    'saved_bytes' => strlen($rawBytes),
+    'optimized' => $optimized !== null
+]);
