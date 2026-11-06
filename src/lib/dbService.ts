@@ -27,7 +27,12 @@ export interface Project {
   name: string;
   location: string;
   delivery_date: string | null;
-  status: 'Coming Soon' | 'In Progress' | 'Sold Out' | 'Under Construction' | 'Ready';
+  status: 'Coming Soon' | 'In Progress' | 'Sold Out' | 'Under Construction' | 'Ready' | 'Available For Sale';
+  project_type: 'Residential' | 'Commercial' | 'Mixed';
+  total_area: number | null;
+  building_area: number | null;
+  construction_progress: number;
+  sold_units: number;
   available_units: number;
   total_units: number;
   image_url: string | null;
