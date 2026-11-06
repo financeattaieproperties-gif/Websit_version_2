@@ -29,7 +29,7 @@ const S = {
 
 const blank: ProjectInput = {
   name: '', location: '', delivery_date: null,
-  status: 'Coming Soon', available_units: 0,
+  status: 'Coming Soon', project_type: 'Residential', total_area: null, building_area: null, construction_progress: 0, sold_units: 0, available_units: 0,
   total_units: 0, image_url: null, gallery_images: [], video_url: null, masterplan_image: null, description: null,
 };
 
@@ -119,7 +119,7 @@ export default function ProjectForm() {
         showToast(true, 'Project updated.');
       } else {
         const res = await api.createProject(form);
-        showToast(true, 'Project created. You can now add apartments/units below.');
+        showToast(true, 'Project created. You can now configure its building and units.');
         setTimeout(() => navigate(`/projects/${res.id}/edit`), 900);
       }
     } catch (err) {
@@ -189,15 +189,35 @@ export default function ProjectForm() {
 
           {/* Core details */}
           <div style={{ ...S.section, ...S.divider }}>
-            <p style={S.secTitle}>Core Details</p>
+            <p style={S.secTitle}>Step 1 — Overall Project Information</p>
             <div style={S.grid}>
               <div style={S.full}>
                 <label style={S.label}>Project Name *</label>
                 <input style={S.input} value={form.name} onChange={e => set('name', e.target.value)} required placeholder="e.g. Aria Residences" />
               </div>
               <div style={S.full}>
-                <label style={S.label}>Location *</label>
+                <label style={S.label}>Exact Project Location *</label>
                 <input style={S.input} value={form.location} onChange={e => set('location', e.target.value)} required placeholder="e.g. Macroyan, Kabul" />
+              </div>
+              <div>
+                <label style={S.label}>Project Type *</label>
+                <select style={S.select} value={form.project_type} onChange={e => set('project_type', e.target.value as ProjectInput['project_type'])}>
+                  <option value="Residential">Residential</option>
+                  <option value="Commercial">Commercial</option>
+                  <option value="Mixed">Mixed — Residential & Commercial</option>
+                </select>
+              </div>
+              <div>
+                <label style={S.label}>Project Total Area (m²)</label>
+                <input style={S.input} type="number" min={0} step="0.01" value={form.total_area ?? ''} onChange={e => set('total_area', e.target.value === '' ? null : Number(e.target.value))} />
+              </div>
+              <div>
+                <label style={S.label}>Building Area (m²)</label>
+                <input style={S.input} type="number" min={0} step="0.01" value={form.building_area ?? ''} onChange={e => set('building_area', e.target.value === '' ? null : Number(e.target.value))} />
+              </div>
+              <div>
+                <label style={S.label}>Construction Progress (%)</label>
+                <input style={S.input} type="number" min={0} max={100} value={form.construction_progress} onChange={e => set('construction_progress', Math.max(0, Math.min(100, Number(e.target.value))))} />
               </div>
               <div>
                 <label style={S.label}>Status</label>
@@ -206,11 +226,12 @@ export default function ProjectForm() {
                   <option>In Progress</option>
                   <option>Under Construction</option>
                   <option>Ready</option>
+                  <option>Available For Sale</option>
                   <option>Sold Out</option>
                 </select>
               </div>
               <div>
-                <label style={S.label}>Delivery Date</label>
+                <label style={S.label}>Expected Handover Date</label>
                 <input style={S.input} value={form.delivery_date ?? ''} onChange={e => set('delivery_date', e.target.value || null)} placeholder="e.g. Q2 2027" />
               </div>
             </div>
@@ -223,6 +244,10 @@ export default function ProjectForm() {
               <div>
                 <label style={S.label}>Available Units</label>
                 <input style={S.input} type="number" min={0} value={form.available_units} onChange={e => set('available_units', Number(e.target.value))} />
+              </div>
+              <div>
+                <label style={S.label}>Sold Units</label>
+                <input style={S.input} type="number" min={0} value={form.sold_units} onChange={e => set('sold_units', Math.max(0, Number(e.target.value)))} />
               </div>
               <div>
                 <label style={S.label}>Total Units</label>
