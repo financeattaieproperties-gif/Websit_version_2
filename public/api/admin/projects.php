@@ -34,6 +34,11 @@ if ($method === 'POST') {
     }
     $avail = intval($b['available_units'] ?? 0);
     $total = intval($b['total_units']     ?? 0);
+    $sold = max(0, intval($b['sold_units'] ?? 0));
+    $projectType = in_array(($b['project_type'] ?? ''), ['Residential','Commercial','Mixed'], true) ? $b['project_type'] : 'Residential';
+    $totalArea = isset($b['total_area']) && $b['total_area'] !== '' ? (float) $b['total_area'] : null;
+    $buildingArea = isset($b['building_area']) && $b['building_area'] !== '' ? (float) $b['building_area'] : null;
+    $progress = max(0, min(100, intval($b['construction_progress'] ?? 0)));
     $del   = !empty($b['delivery_date']) ? trim((string) $b['delivery_date']) : null;
     $img   = !empty($b['image_url'])     ? trim((string) $b['image_url'])     : null;
     $gallery = isset($b['gallery_images']) && is_array($b['gallery_images']) ? json_encode(array_values(array_filter($b['gallery_images']))) : null;
@@ -41,10 +46,10 @@ if ($method === 'POST') {
     $masterplan = trim((string) ($b['masterplan_image'] ?? '')) ?: null;
     $desc  = !empty($b['description'])   ? trim((string) $b['description'])   : null;
     $stmt  = db()->prepare(
-        'INSERT INTO projects (name,location,delivery_date,status,available_units,total_units,image_url,gallery_images,video_url,masterplan_image,description)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+        'INSERT INTO projects (name,location,delivery_date,status,available_units,total_units,image_url,gallery_images,video_url,masterplan_image,description,project_type,total_area,building_area,construction_progress,sold_units)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
     );
-    $stmt->bind_param('ssssiisssss', $b['name'], $b['location'], $del, $b['status'], $avail, $total, $img, $gallery, $video, $masterplan, $desc);
+    $stmt->bind_param('ssssiissssssddii', $b['name'], $b['location'], $del, $b['status'], $avail, $total, $img, $gallery, $video, $masterplan, $desc, $projectType, $totalArea, $buildingArea, $progress, $sold);
     if (!$stmt->execute()) {
         json_out(['error' => 'Failed to create project: ' . db()->error], 500);
     }
@@ -59,6 +64,11 @@ if ($method === 'PUT') {
     if (!$id) json_out(['error' => 'id required'], 400);
     $avail = intval($b['available_units'] ?? 0);
     $total = intval($b['total_units']     ?? 0);
+    $sold = max(0, intval($b['sold_units'] ?? 0));
+    $projectType = in_array(($b['project_type'] ?? ''), ['Residential','Commercial','Mixed'], true) ? $b['project_type'] : 'Residential';
+    $totalArea = isset($b['total_area']) && $b['total_area'] !== '' ? (float) $b['total_area'] : null;
+    $buildingArea = isset($b['building_area']) && $b['building_area'] !== '' ? (float) $b['building_area'] : null;
+    $progress = max(0, min(100, intval($b['construction_progress'] ?? 0)));
     $del   = !empty($b['delivery_date']) ? trim((string) $b['delivery_date']) : null;
     $img   = !empty($b['image_url'])     ? trim((string) $b['image_url'])     : null;
     $gallery = isset($b['gallery_images']) && is_array($b['gallery_images']) ? json_encode(array_values(array_filter($b['gallery_images']))) : null;
@@ -67,9 +77,9 @@ if ($method === 'PUT') {
     $desc  = !empty($b['description'])   ? trim((string) $b['description'])   : null;
     $stmt  = db()->prepare(
         'UPDATE projects SET name=?,location=?,delivery_date=?,status=?,
-         available_units=?,total_units=?,image_url=?,gallery_images=?,video_url=?,masterplan_image=?,description=? WHERE id=?'
+         available_units=?,total_units=?,image_url=?,gallery_images=?,video_url=?,masterplan_image=?,description=?,project_type=?,total_area=?,building_area=?,construction_progress=?,sold_units=? WHERE id=?'
     );
-    $stmt->bind_param('ssssiisssssi', $b['name'], $b['location'], $del, $b['status'], $avail, $total, $img, $gallery, $video, $masterplan, $desc, $id);
+    $stmt->bind_param('ssssiissssssddiii', $b['name'], $b['location'], $del, $b['status'], $avail, $total, $img, $gallery, $video, $masterplan, $desc, $projectType, $totalArea, $buildingArea, $progress, $sold, $id);
     if (!$stmt->execute()) {
         json_out(['error' => 'Failed to update project: ' . db()->error], 500);
     }
