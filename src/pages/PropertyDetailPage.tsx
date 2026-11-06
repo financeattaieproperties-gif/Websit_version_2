@@ -141,6 +141,11 @@ export default function PropertyDetailPage() {
                   : `$${property.price.toLocaleString()}`}
               </p>
 
+              {property.area != null && property.area > 0 && (
+                <p className="text-sm text-neutral-600 mb-4">
+                  Rate: <strong>${(property.price / property.area).toLocaleString(undefined, { maximumFractionDigits: 2 })} / m²${property.listing_type === 'rent' ? ' / month' : ''}</strong>
+                </p>
+              )}
               <div className="flex flex-wrap gap-3 mb-8">
                 <ClickToCallButton />
                 <button
