@@ -262,7 +262,7 @@ export default function PropertyDetailPage() {
         />
       )}
 
-      {property && blueprintOpen && hasBlueprint && (
+      {property && blueprintOpen && (
         <BlueprintViewer
           propertyTitle={property.title}
           floorPlanUrl={property.floor_plan_url}
@@ -275,4 +275,3 @@ export default function PropertyDetailPage() {
     </main>
   );
 }
-

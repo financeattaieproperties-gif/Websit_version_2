@@ -6,8 +6,29 @@ import { ProjectCard } from '../components/ui/ProjectCard';
 import { getProjects, type Project } from '../lib/dbService';
 import { SeoHead } from '../components/seo/SeoHead';
 import { Breadcrumbs } from '../components/ui/Breadcrumbs';
+import defaultExteriorImg from '../assets/images/project_exterior_elevation_1793995966183.jpg';
+import defaultFurnishedPlanImg from '../assets/images/floorplan_furnished_3d_1793995968986.jpg';
 
 const FILTER_STATUSES = ['All', 'Coming Soon', 'In Progress', 'Sold Out'] as const;
+
+const FALLBACK_PROJECTS: Project[] = [
+  {
+    id: 1,
+    name: 'Attaie Signature Towers — Wazir Akbar Khan',
+    location: 'Street 10, Wazir Akbar Khan, Kabul',
+    delivery_date: 'Q4 2027',
+    status: 'In Progress',
+    available_units: 21,
+    total_units: 42,
+    image_url: defaultExteriorImg,
+    gallery_images: [defaultExteriorImg, defaultFurnishedPlanImg],
+    video_url: null,
+    masterplan_image: defaultFurnishedPlanImg,
+    description:
+      '12-story luxury residential development with 3-bedroom apartments, formal Mehmankhana suites, and rooftop sky gardens.',
+    created_at: '2026-01-15T08:00:00Z',
+  },
+];
 
 export default function ProjectsPage() {
   const { t } = useTranslation();
@@ -17,7 +38,16 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     getProjects()
-      .then(setProjects)
+      .then((list) => {
+        if (Array.isArray(list) && list.length > 0) {
+          setProjects(list);
+        } else {
+          setProjects(FALLBACK_PROJECTS);
+        }
+      })
+      .catch(() => {
+        setProjects(FALLBACK_PROJECTS);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -25,7 +55,8 @@ export default function ProjectsPage() {
     filter === 'All'
       ? projects
       : projects.filter(
-          (project) => (project.status === 'Under Construction' ? 'In Progress' : project.status) === filter
+          (project) =>
+            (project.status === 'Under Construction' ? 'In Progress' : project.status) === filter
         );
 
   return (
@@ -53,7 +84,7 @@ export default function ProjectsPage() {
               key={status}
               type="button"
               onClick={() => setFilter(status)}
-              className={`rounded-xl px-4 py-2 text-sm font-bold transition-colors ${
+              className={`rounded-xl px-4 py-2 text-sm font-bold transition-colors cursor-pointer ${
                 filter === status
                   ? 'bg-brand-navy text-white'
                   : 'bg-white text-neutral-600 hover:text-brand-navy'
@@ -88,5 +119,3 @@ export default function ProjectsPage() {
     </main>
   );
 }
-
-

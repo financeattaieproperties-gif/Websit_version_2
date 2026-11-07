@@ -18,8 +18,28 @@ import { HorizontalCarousel } from '../ui/HorizontalCarousel';
 import { MessageCircle, Phone } from 'lucide-react';
 import { ClickToCallButton } from '../ui/ClickToCallButton';
 import { getProperties, getProjects, type Property, type Project } from '../../lib/dbService';
+import defaultExteriorImg from '../../assets/images/project_exterior_elevation_1793995966183.jpg';
 
 const WHATSAPP_NUMBER = '93782222279';
+
+const FALLBACK_PREVIEW_PROJECTS: Project[] = [
+  {
+    id: 1,
+    name: 'Attaie Signature Towers — Wazir Akbar Khan',
+    location: 'Street 10, Wazir Akbar Khan, Kabul',
+    delivery_date: 'Q4 2027',
+    status: 'In Progress',
+    available_units: 21,
+    total_units: 42,
+    image_url: defaultExteriorImg,
+    gallery_images: [defaultExteriorImg],
+    video_url: null,
+    masterplan_image: null,
+    description:
+      '12-story luxury residential development with 3-bedroom apartments, formal Mehmankhana suites, and rooftop sky gardens.',
+    created_at: '2026-01-15T08:00:00Z',
+  },
+];
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
@@ -70,14 +90,12 @@ export const LandingPageContent = () => {
   const [loadingFeatured, setLoadingFeatured] = useState(true);
 
   useEffect(() => {
-    Promise.all([getProperties(), getProjects()])
+    Promise.all([getProperties().catch(() => []), getProjects().catch(() => FALLBACK_PREVIEW_PROJECTS)])
       .then(([props, projs]) => {
-        setProperties(props.slice(0, FEATURED_PROPERTIES_LIMIT));
-        setProjects(projs.slice(0, FEATURED_PROJECTS_LIMIT));
-      })
-      .catch(() => {
-        setProperties([]);
-        setProjects([]);
+        setProperties(Array.isArray(props) ? props.slice(0, FEATURED_PROPERTIES_LIMIT) : []);
+        const validProjects =
+          Array.isArray(projs) && projs.length > 0 ? projs : FALLBACK_PREVIEW_PROJECTS;
+        setProjects(validProjects.slice(0, FEATURED_PROJECTS_LIMIT));
       })
       .finally(() => setLoadingFeatured(false));
   }, []);

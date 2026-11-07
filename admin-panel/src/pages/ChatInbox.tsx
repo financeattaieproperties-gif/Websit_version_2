@@ -9,7 +9,6 @@ export interface IncomingVisualAlert {
   pageContext: string | null;
   messageText: string;
   arrivedAt: string;
-  isAiHandoff: boolean;
 }
 
 /**
@@ -244,14 +243,14 @@ const S = {
     background: resolved ? '#ECFDF5' : '#FEF3C7',
     color: resolved ? '#065F46' : '#92400E',
   }),
-  sourceTag: (isAiHandoff: boolean): React.CSSProperties => ({
+  sourceTag: {
     fontSize: '0.64rem',
     fontWeight: 700,
     padding: '0.1rem 0.4rem',
     borderRadius: 6,
-    background: isAiHandoff ? '#EEF2FF' : '#F3F4F6',
-    color: isAiHandoff ? '#4338CA' : '#4B5563',
-  }),
+    background: '#F3F4F6',
+    color: '#4B5563',
+  } as const,
   threadCard: {
     background: '#FFFFFF',
     borderRadius: 12,
@@ -340,25 +339,6 @@ const S = {
   } as const,
 };
 
-const QUICK_REPLIES = [
-  {
-    label: '🇩🇦 موجود است / بازدید',
-    text: 'سلام و وقت بخیر! بله، این ملک فعلاً موجود است. چه روزی و چه ساعتی برای بازدید حضوری برایتان مناسب است؟',
-  },
-  {
-    label: '🇩🇦 تماس فوری مشاور',
-    text: 'تشکر از پیام شما در رهنمای معاملات عطایی. شماره تماس شما ثبت شد و مشاور بخش مربوطه همین اکنون با شما به تماس می‌شود.',
-  },
-  {
-    label: '🇬🇧 Available / Viewing',
-    text: 'Hello! Yes, this property is currently available. Would you like to schedule an in-person viewing in Kabul?',
-  },
-  {
-    label: '🇬🇧 Advisor Calling Shortly',
-    text: 'Thank you for messaging Attaie Properties! Our property specialist has noted your number and will call you shortly.',
-  },
-];
-
 const SAMPLE_DEMO_CONVERSATIONS: ChatConversation[] = [
   {
     id: 'chat_demo_kabul_1',
@@ -382,41 +362,11 @@ const SAMPLE_DEMO_CONVERSATIONS: ChatConversation[] = [
         created_at: new Date(Date.now() - 18 * 60 * 1000).toISOString(),
       },
       {
-        id: 'm_demo_2',
-        sender: 'system',
-        sender_name: 'System',
-        text: 'Auto-confirmation sent to customer',
-        created_at: new Date(Date.now() - 18 * 60 * 1000).toISOString(),
-      },
-      {
         id: 'm_demo_3',
         sender: 'customer',
         sender_name: 'احمد سیرت',
         text: 'اگر امکان داشته باشد فردا ساعت ۱۰ صبح برای دیدن اپارتمان بیایم.',
         created_at: new Date(Date.now() - 4 * 60 * 1000).toISOString(),
-      },
-    ],
-  },
-  {
-    id: 'aichat_demo_kabul_2',
-    customer_name: 'مریم رحیمی (Maryam Rahimi)',
-    customer_phone: '+93 79 901 3345',
-    customer_email: 'maryam.r@example.com',
-    property_id: '103',
-    property_name: 'AI Chat Handoff',
-    page_context: '/properties/103 — حویلی پنج اتاقه فروشی در کارته چهار',
-    status: 'open',
-    unread_admin: 1,
-    unread_customer: 0,
-    created_at: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-    updated_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-    messages: [
-      {
-        id: 'm_demo_4',
-        sender: 'customer',
-        sender_name: 'مریم رحیمی',
-        text: '🤝 [درخواست مشاور انسانی از چت هوشمند]\nمشتری: یک حویلی فروشی در کارته چهار دارین؟\nدستیار هوشمند: بله، حویلی پنج اتاقه فروشی در کارته چهار (کود ATP-103) به قیمت $165,000 موجود است.\nیادداشت مشتری: لطفاً در مورد قباله شرعی و تخفیف نهایی معلومات بدهید.',
-        created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
       },
     ],
   },
@@ -473,9 +423,6 @@ export default function ChatInbox() {
 
   const triggerIncomingVisualAlert = useCallback(
     (conv: ChatConversation, msgId: string, msgText: string, msgCreatedAt: string) => {
-      const isAiHandoff =
-        conv.id.startsWith('aichat_') || (conv.property_name || '').includes('AI Chat Handoff');
-
       const alertItem: IncomingVisualAlert = {
         id: `alert_${msgId}_${Date.now()}`,
         conversationId: conv.id,
@@ -484,7 +431,6 @@ export default function ChatInbox() {
         pageContext: conv.page_context || conv.property_name || null,
         messageText: msgText,
         arrivedAt: msgCreatedAt,
-        isAiHandoff,
       };
 
       setVisualAlerts(prev => {
@@ -982,7 +928,7 @@ export default function ChatInbox() {
             )}
           </h1>
           <p style={S.sub}>
-            Real-time notification listener for incoming customer inquiries and AI handoffs.
+            Real-time notification listener for incoming customer messages.
             {lastSynced && <span style={{ marginLeft: '0.5rem', color: '#9CA3AF' }}>• Synced {lastSynced}</span>}
           </p>
         </div>
@@ -1029,7 +975,7 @@ export default function ChatInbox() {
               <div style={{ flex: 1, minWidth: 240 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
                   <span style={S.alertPill}>
-                    🔔 {alert.isAiHandoff ? 'New AI Handoff' : 'New Customer Message'}
+                    🔔 New Customer Message
                   </span>
                   <strong style={{ fontSize: '0.9rem', color: '#FFFFFF' }}>
                     {alert.customerName}
@@ -1251,9 +1197,6 @@ export default function ChatInbox() {
                 const isSelected = conv.id === activeConv?.id;
                 const isUnread = (conv.unread_admin || 0) > 0;
                 const isHighlighted = conv.id === recentlyArrivedConvId;
-                const isAiHandoff =
-                  conv.id.startsWith('aichat_') ||
-                  (conv.property_name || '').includes('AI Chat Handoff');
                 const updatedTime = new Date(conv.updated_at || conv.created_at).toLocaleTimeString([], {
                   hour: '2-digit',
                   minute: '2-digit',
@@ -1283,8 +1226,8 @@ export default function ChatInbox() {
                           </span>
                           <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
                             {isUnread && <span style={S.unreadBadge}>{conv.unread_admin}</span>}
-                            <span style={S.sourceTag(isAiHandoff)}>
-                              {isAiHandoff ? '🤖 AI Handoff' : '💬 Live Chat'}
+                            <span style={S.sourceTag}>
+                              💬 Live Chat
                             </span>
                             <span style={S.statusTag(conv.status === 'resolved')}>
                               {conv.status === 'resolved' ? 'Resolved' : 'Active'}
@@ -1583,21 +1526,7 @@ export default function ChatInbox() {
                   </div>
                 )}
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <div style={S.cannedRow}>
-                    {QUICK_REPLIES.map(item => (
-                      <button
-                        key={item.label}
-                        type="button"
-                        style={S.cannedBtn}
-                        onClick={() => setReplyText(item.text)}
-                        title={item.text}
-                      >
-                        + {item.label}
-                      </button>
-                    ))}
-                  </div>
-
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.74rem', color: '#4B5563' }}>
                     <span>Reply as:</span>
                     <input

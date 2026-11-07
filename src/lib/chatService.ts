@@ -287,8 +287,8 @@ export async function sendCustomerTypingSignal(
 
 export async function sendCustomerChatMessage(input: {
   sessionId: string;
-  name: string;
-  phone: string;
+  name?: string;
+  phone?: string;
   email?: string;
   pageContext?: string;
   message: string;
@@ -297,22 +297,26 @@ export async function sendCustomerChatMessage(input: {
     input.sessionId ||
     `chat_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
+  const visitorLabel =
+    input.name?.trim() || `Visitor #${sessionId.slice(-4).toUpperCase()}`;
+  const visitorPhone = input.phone?.trim() || '';
+
   saveCustomerSession({
     sessionId,
-    name: input.name,
-    phone: input.phone,
+    name: visitorLabel,
+    phone: visitorPhone,
     email: input.email || '',
   });
 
-  // Also forward the first message of the session to the existing Leads endpoint
+  // Also forward the first message of the session to the existing Leads endpoint if contact info exists
   const leadSyncKey = `${LEAD_SYNCED_PREFIX}${sessionId}`;
-  if (!localStorage.getItem(leadSyncKey) && input.name && input.phone) {
+  if (!localStorage.getItem(leadSyncKey) && input.name?.trim() && input.phone?.trim()) {
     try {
       localStorage.setItem(leadSyncKey, '1');
       void createLead({
-        name: input.name,
+        name: visitorLabel,
         email: input.email?.trim() || 'chat@attaieproperties.com',
-        phone: input.phone,
+        phone: visitorPhone,
         message: `[Direct Chat] ${input.message}`,
         propertyName: input.pageContext || 'Website Live Chat',
       }).catch(() => {});
@@ -328,8 +332,8 @@ export async function sendCustomerChatMessage(input: {
       body: JSON.stringify({
         action: 'customer_message',
         session_id: sessionId,
-        customer_name: input.name,
-        customer_phone: input.phone,
+        customer_name: visitorLabel,
+        customer_phone: visitorPhone,
         customer_email: input.email || '',
         page_context: input.pageContext || '',
         message: input.message,
@@ -353,7 +357,7 @@ export async function sendCustomerChatMessage(input: {
   const newMsg: ChatMessage = {
     id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     sender: 'customer',
-    sender_name: input.name,
+    sender_name: visitorLabel,
     text: input.message,
     read_status: 'sent',
     read_at: null,
@@ -361,18 +365,10 @@ export async function sendCustomerChatMessage(input: {
   };
 
   if (!existing) {
-    const autoAck: ChatMessage = {
-      id: `msg_${Date.now() + 1}_sys`,
-      sender: 'system',
-      text: 'Thank you for messaging Attaie Properties! An advisor has received your message and will reply shortly here or via phone/WhatsApp.',
-      read_status: 'read',
-      read_at: now,
-      created_at: now,
-    };
     const created: ChatConversation = {
       id: sessionId,
-      customer_name: input.name,
-      customer_phone: input.phone,
+      customer_name: visitorLabel,
+      customer_phone: visitorPhone,
       customer_email: input.email || '',
       page_context: input.pageContext || '',
       status: 'open',
@@ -385,7 +381,7 @@ export async function sendCustomerChatMessage(input: {
       is_admin_typing: false,
       created_at: now,
       updated_at: now,
-      messages: [newMsg, autoAck],
+      messages: [newMsg],
     };
     upsertLocalConversation(created, 'NEW_CUSTOMER_MESSAGE');
     return created;
@@ -393,8 +389,8 @@ export async function sendCustomerChatMessage(input: {
 
   const updated: ChatConversation = {
     ...existing,
-    customer_name: input.name || existing.customer_name,
-    customer_phone: input.phone || existing.customer_phone,
+    customer_name: existing.customer_name || visitorLabel,
+    customer_phone: existing.customer_phone || visitorPhone,
     customer_email: input.email || existing.customer_email,
     page_context: input.pageContext || existing.page_context,
     status: 'open',

@@ -194,10 +194,14 @@ if ($method === 'POST' && $action === 'customer_message') {
             }
         }
 
+        if ($name === '') {
+            $name = 'Visitor #' . strtoupper(substr($sessionId, -4));
+        }
+
         $newMessage = [
             'id'          => $msgId,
             'sender'      => 'customer',
-            'sender_name' => $name !== '' ? $name : 'Customer',
+            'sender_name' => $name,
             'text'        => $text,
             'read_status' => 'sent',
             'read_at'     => null,
@@ -205,17 +209,6 @@ if ($method === 'POST' && $action === 'customer_message') {
         ];
 
         if ($targetIndex === null) {
-            if ($name === '' || $phone === '') {
-                return ['error' => 'Name and phone number are required to start a chat'];
-            }
-            $welcomeReply = [
-                'id'          => 'msg_' . bin2hex(random_bytes(6)),
-                'sender'      => 'system',
-                'text'        => 'Thank you for messaging Attaie Properties! An advisor has received your message and will reply shortly here or via phone/WhatsApp.',
-                'read_status' => 'read',
-                'read_at'     => $now,
-                'created_at'  => $now,
-            ];
             $newConv = [
                 'id'                 => $sessionId,
                 'customer_name'      => $name,
@@ -230,7 +223,7 @@ if ($method === 'POST' && $action === 'customer_message') {
                 'typing_admin_name'  => null,
                 'created_at'         => $now,
                 'updated_at'         => $now,
-                'messages'           => [$newMessage, $welcomeReply],
+                'messages'           => [$newMessage],
             ];
             array_unshift($conversations, $newConv);
             return chat_enrich_conversation($newConv);
