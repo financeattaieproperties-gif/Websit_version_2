@@ -6,3 +6,8 @@ out/
 *.tsbuildinfo
 public/api/db.php
 admin-panel/node_modules/
+.mcp.json
+.cursor/mcp.json
+.gemini/settings.json
+opencode.json
+

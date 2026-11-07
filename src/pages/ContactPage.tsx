@@ -12,6 +12,7 @@ import { createLead } from '../lib/dbService';
 import { SeoHead } from '../components/seo/SeoHead';
 import { Breadcrumbs } from '../components/ui/Breadcrumbs';
 import { useTranslation } from 'react-i18next';
+import { AttaieGoogleMap } from '../components/map/AttaieGoogleMap';
 
 const schema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -352,6 +353,27 @@ export default function ContactPage() {
               </AnimatePresence>
             </motion.div>
 
+          </div>
+
+          {/* Interactive Kabul Offices & Directions Map */}
+          <div className="max-w-5xl mx-auto mt-16">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-1 h-6 bg-brand-gold rounded-full" />
+              <div>
+                <h2 className="text-2xl font-display font-bold text-brand-navy">
+                  Our Kabul Offices & Interactive Directions
+                </h2>
+                <p className="text-sm text-neutral-500">
+                  Explore our Wazir Akbar Khan headquarters and branch offices across Kabul or calculate driving & walking directions.
+                </p>
+              </div>
+            </div>
+            <AttaieGoogleMap
+              mode="office"
+              heightClass="h-[520px]"
+              showNeighborhoodTools={true}
+              showDirections={true}
+            />
           </div>
         </div>
       </section>

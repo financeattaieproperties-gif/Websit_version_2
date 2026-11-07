@@ -1,7 +1,7 @@
-import React, { Suspense, useCallback, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SlidersHorizontal, Bed, Bath, Maximize2, Layers, MapPin, CalendarDays, Building2, ArrowUpRight, MessageSquare } from 'lucide-react';
+import { SlidersHorizontal, Bed, Bath, Maximize2, Layers, MapPin, CalendarDays, Building2, ArrowUpRight, MessageSquare, LayoutGrid, Map as MapIcon, Columns2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Navbar } from '../components/layout/Navbar';
 import { Footer } from '../components/layout/Footer';
@@ -12,6 +12,7 @@ import { ProjectCard } from '../components/ui/ProjectCard';
 import { PropertyCardSkeleton } from '../components/ui/PropertyCardSkeleton';
 import { VisitRequestDialog, type VisitTarget } from '../components/forms/VisitRequestDialog';
 import { QuickContactModal } from '../components/forms/QuickContactModal';
+import { AttaieGoogleMap, type MapPropertyItem } from '../components/map/AttaieGoogleMap';
 import {
   getProperties,
   getProjects,
@@ -228,6 +229,7 @@ function PropertiesContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visitTarget, setVisitTarget] = useState<VisitTarget | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'split' | 'map'>('grid');
 
   const loadData = useCallback(() => {
     setLoading(true);
@@ -395,6 +397,51 @@ function PropertiesContent() {
     );
   });
 
+  const mapItems: MapPropertyItem[] = useMemo(() => {
+    if (isProjects) {
+      return projects.map((proj) => ({
+        id: `proj-${proj.id}`,
+        title: proj.name,
+        locationQuery: proj.location || 'Wazir Akbar Khan, Kabul',
+        priceDisplay: proj.available_units !== undefined ? `${proj.available_units} Units Available` : undefined,
+        type: 'Signature Project',
+        status: proj.status,
+        imageUrl: proj.image_url,
+        href: `/projects/${proj.id}`,
+      }));
+    }
+
+    const propItems: MapPropertyItem[] = properties.map((p) => ({
+      id: `prop-${p.id}`,
+      title: p.title,
+      locationQuery: p.location || 'Kabul, Afghanistan',
+      priceDisplay: p.listing_type === 'rent' ? `$${p.price.toLocaleString()} / mo` : `$${p.price.toLocaleString()}`,
+      type: p.type,
+      status: p.status,
+      beds: p.beds,
+      baths: p.baths,
+      area: p.area,
+      imageUrl: p.image_url,
+      href: `/properties/${p.id}`,
+    }));
+
+    const unitItems: MapPropertyItem[] = projectUnits.map((u) => ({
+      id: `unit-${u.id}`,
+      title: u.title || `${u.project_name || 'Project'} — Unit ${u.unit_number}`,
+      locationQuery: u.project_location || 'Wazir Akbar Khan, Kabul',
+      priceDisplay: u.price !== null ? `$${Number(u.price).toLocaleString()}` : 'Price on request',
+      type: 'Project Apartment',
+      status: u.status,
+      beds: u.beds,
+      baths: u.baths,
+      area: u.area,
+      imageUrl: u.image_url,
+      href: `/projects/${u.project_id}#unit-${u.id}`,
+    }));
+
+    return [...propItems, ...unitItems];
+  }, [isProjects, projects, properties, projectUnits]);
+
   const totalInventoryCount = properties.length + projectUnits.length;
   const seo = buildPropertiesListingSeo({ isProjects, search: searchQuery.trim() });
 
@@ -442,40 +489,69 @@ function PropertiesContent() {
 
       {/* Tab bar with sliding active indicator */}
       <div className="bg-white/95 backdrop-blur-md border-b border-neutral-100 sticky top-0 z-40 shadow-sm">
-        <div className="container-custom flex gap-1 py-3">
-          {[
-            { label: 'Individual Properties', href: '/properties?category=individual', active: !isProjects },
-            { label: 'Signature Projects', href: '/projects', active: isProjects },
-          ].map((tab) => (
-            <a
-              key={tab.label}
-              href={tab.href}
-              className={`relative px-5 py-2 rounded-lg text-sm font-bold transition-colors duration-200 ${
-                tab.active ? 'text-white' : 'text-neutral-500 hover:text-brand-navy hover:bg-neutral-100'
-              }`}
-            >
-              {tab.active && (
-                <motion.span
-                  layoutId="tab-bg"
-                  className="absolute inset-0 bg-brand-navy rounded-lg"
-                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                />
-              )}
-              <span className="relative z-10">{tab.label}</span>
-            </a>
-          ))}
+        <div className="container-custom flex flex-wrap items-center justify-between gap-3 py-3">
+          <div className="flex gap-1">
+            {[
+              { label: 'Individual Properties', href: '/properties?category=individual', active: !isProjects },
+              { label: 'Signature Projects', href: '/projects', active: isProjects },
+            ].map((tab) => (
+              <a
+                key={tab.label}
+                href={tab.href}
+                className={`relative px-5 py-2 rounded-lg text-sm font-bold transition-colors duration-200 ${
+                  tab.active ? 'text-white' : 'text-neutral-500 hover:text-brand-navy hover:bg-neutral-100'
+                }`}
+              >
+                {tab.active && (
+                  <motion.span
+                    layoutId="tab-bg"
+                    className="absolute inset-0 bg-brand-navy rounded-lg"
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span className="relative z-10">{tab.label}</span>
+              </a>
+            ))}
+          </div>
+
+          {/* Grid / Split / Interactive Map Toggle */}
+          <div className="inline-flex items-center gap-1 rounded-xl bg-neutral-100 p-1">
+            {[
+              { id: 'grid' as const, label: 'Grid', icon: LayoutGrid },
+              { id: 'split' as const, label: 'Split + Map', icon: Columns2 },
+              { id: 'map' as const, label: 'Google Map', icon: MapIcon },
+            ].map((opt) => {
+              const Icon = opt.icon;
+              const active = viewMode === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setViewMode(opt.id)}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                    active
+                      ? 'bg-brand-navy text-white shadow-xs'
+                      : 'text-neutral-600 hover:text-brand-navy'
+                  }`}
+                >
+                  <Icon size={14} className={active ? 'text-brand-gold' : ''} />
+                  <span>{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       <div className="container-custom py-12 flex-grow">
         <div className="flex flex-col lg:flex-row gap-8">
-          {!isProjects && (
+          {!isProjects && viewMode !== 'map' && (
             <aside className="w-full lg:w-72 shrink-0">
               <FilterSidebar filters={filters} onChange={setFilters} className="sticky top-24" />
             </aside>
           )}
 
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {/* Error state with retry */}
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center justify-between gap-4">
@@ -512,118 +588,152 @@ function PropertiesContent() {
               </div>
             </div>
 
-            {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <PropertyCardSkeleton key={i} />
-                ))}
-              </div>
-            ) : isProjects ? (
-              <motion.div
-                key="projects"
-                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
-                initial="hidden"
-                animate="visible"
-                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07 } } }}
-              >
-                {projects.map((proj) => (
-                  <motion.div
-                    key={proj.id}
-                    variants={{
-                      hidden: { opacity: 0, y: 20, scale: 0.97 },
-                      visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } },
-                    }}
-                  >
-                    <ProjectCard
-                      id={String(proj.id)}
-                      name={proj.name}
-                      location={proj.location}
-                      deliveryDate={proj.delivery_date ?? undefined}
-                      status={proj.status}
-                      availableUnits={proj.available_units}
-                      image={proj.image_url}
-                    />
-                  </motion.div>
-                ))}
-              </motion.div>
+            {viewMode === 'map' ? (
+              <AttaieGoogleMap
+                mode="multi-property"
+                items={mapItems}
+                heightClass="h-[640px]"
+                showNeighborhoodTools={true}
+                showDirections={true}
+              />
             ) : (
-              <>
-                {!loading && totalInventoryCount === 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex flex-col items-center justify-center py-24 text-center"
-                  >
-                    <div className="w-20 h-20 rounded-full bg-brand-gold/10 flex items-center justify-center mb-6">
-                      <SlidersHorizontal size={32} className="text-brand-gold" />
-                    </div>
-                    <h3 className="text-xl font-bold text-brand-navy mb-2">No properties match your filters</h3>
-                    <p className="text-neutral-500 mb-6 max-w-xs">
-                      Try adjusting your search criteria to see more results.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFilters(defaultFilters);
-                        handleSearchChange('');
-                      }}
-                      className="px-6 py-2.5 bg-brand-navy text-white rounded-lg font-semibold text-sm hover:bg-brand-navy-light transition-colors"
+              <div className={viewMode === 'split' ? 'grid grid-cols-1 xl:grid-cols-12 gap-6 items-start' : ''}>
+                <div className={viewMode === 'split' ? 'xl:col-span-7' : ''}>
+                  {loading ? (
+                    <div
+                      className={`grid grid-cols-1 md:grid-cols-2 ${
+                        viewMode === 'split' ? '' : 'xl:grid-cols-3'
+                      } gap-6`}
                     >
-                      Clear All Filters
-                    </button>
-                  </motion.div>
-                )}
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <PropertyCardSkeleton key={i} />
+                      ))}
+                    </div>
+                  ) : isProjects ? (
+                    <motion.div
+                      key="projects"
+                      className={`grid grid-cols-1 md:grid-cols-2 ${
+                        viewMode === 'split' ? '' : 'xl:grid-cols-3'
+                      } gap-6`}
+                      initial="hidden"
+                      animate="visible"
+                      variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07 } } }}
+                    >
+                      {projects.map((proj) => (
+                        <motion.div
+                          key={proj.id}
+                          variants={{
+                            hidden: { opacity: 0, y: 20, scale: 0.97 },
+                            visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } },
+                          }}
+                        >
+                          <ProjectCard
+                            id={String(proj.id)}
+                            name={proj.name}
+                            location={proj.location}
+                            deliveryDate={proj.delivery_date ?? undefined}
+                            status={proj.status}
+                            availableUnits={proj.available_units}
+                            image={proj.image_url}
+                          />
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  ) : (
+                    <>
+                      {!loading && totalInventoryCount === 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="flex flex-col items-center justify-center py-24 text-center"
+                        >
+                          <div className="w-20 h-20 rounded-full bg-brand-gold/10 flex items-center justify-center mb-6">
+                            <SlidersHorizontal size={32} className="text-brand-gold" />
+                          </div>
+                          <h3 className="text-xl font-bold text-brand-navy mb-2">No properties match your filters</h3>
+                          <p className="text-neutral-500 mb-6 max-w-xs">
+                            Try adjusting your search criteria to see more results.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFilters(defaultFilters);
+                              handleSearchChange('');
+                            }}
+                            className="px-6 py-2.5 bg-brand-navy text-white rounded-lg font-semibold text-sm hover:bg-brand-navy-light transition-colors"
+                          >
+                            Clear All Filters
+                          </button>
+                        </motion.div>
+                      )}
 
-                {totalInventoryCount > 0 && (
-                  <motion.div
-                    key="properties"
-                    className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
-                    initial="hidden"
-                    animate="visible"
-                    variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07 } } }}
-                  >
-                    {properties.map((prop) => (
-                      <motion.div
-                        key={`prop-${prop.id}`}
-                        variants={{
-                          hidden: { opacity: 0, y: 20, scale: 0.97 },
-                          visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } },
-                        }}
-                      >
-                        <PropertyCard
-                          id={String(prop.id)}
-                          serialNumber={prop.serial_number}
-                          title={prop.title}
-                          price={prop.price}
-                          location={prop.location}
-                          beds={prop.beds ?? undefined}
-                          baths={prop.baths ?? undefined}
-                          area={prop.area ?? undefined}
-                          floor={prop.floor ?? undefined}
-                          status={prop.status}
-                          type={prop.type}
-                          listingType={prop.listing_type}
-                          image={prop.image_url}
-                        />
-                      </motion.div>
-                    ))}
-                    {projectUnits.map((unit) => (
-                      <motion.div
-                        key={`unit-${unit.id}`}
-                        variants={{
-                          hidden: { opacity: 0, y: 20, scale: 0.97 },
-                          visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } },
-                        }}
-                      >
-                        <ProjectUnitInventoryCard
-                          unit={unit}
-                          onRequestVisit={setVisitTarget}
-                        />
-                      </motion.div>
-                    ))}
-                  </motion.div>
+                      {totalInventoryCount > 0 && (
+                        <motion.div
+                          key="properties"
+                          className={`grid grid-cols-1 md:grid-cols-2 ${
+                            viewMode === 'split' ? '' : 'xl:grid-cols-3'
+                          } gap-6`}
+                          initial="hidden"
+                          animate="visible"
+                          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07 } } }}
+                        >
+                          {properties.map((prop) => (
+                            <motion.div
+                              key={`prop-${prop.id}`}
+                              variants={{
+                                hidden: { opacity: 0, y: 20, scale: 0.97 },
+                                visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } },
+                              }}
+                            >
+                              <PropertyCard
+                                id={String(prop.id)}
+                                serialNumber={prop.serial_number}
+                                title={prop.title}
+                                price={prop.price}
+                                location={prop.location}
+                                beds={prop.beds ?? undefined}
+                                baths={prop.baths ?? undefined}
+                                area={prop.area ?? undefined}
+                                floor={prop.floor ?? undefined}
+                                status={prop.status}
+                                type={prop.type}
+                                listingType={prop.listing_type}
+                                image={prop.image_url}
+                              />
+                            </motion.div>
+                          ))}
+                          {projectUnits.map((unit) => (
+                            <motion.div
+                              key={`unit-${unit.id}`}
+                              variants={{
+                                hidden: { opacity: 0, y: 20, scale: 0.97 },
+                                visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } },
+                              }}
+                            >
+                              <ProjectUnitInventoryCard
+                                unit={unit}
+                                onRequestVisit={setVisitTarget}
+                              />
+                            </motion.div>
+                          ))}
+                        </motion.div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {viewMode === 'split' && (
+                  <div className="xl:col-span-5 sticky top-24">
+                    <AttaieGoogleMap
+                      mode="multi-property"
+                      items={mapItems}
+                      heightClass="h-[580px]"
+                      showNeighborhoodTools={true}
+                      showDirections={true}
+                    />
+                  </div>
                 )}
-              </>
+              </div>
             )}
           </div>
         </div>

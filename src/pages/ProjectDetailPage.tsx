@@ -18,6 +18,7 @@ import { SeoHead } from '../components/seo/SeoHead';
 import { buildProjectSeo } from '../lib/seoConfig';
 import { Breadcrumbs } from '../components/ui/Breadcrumbs';
 import { useTranslation } from 'react-i18next';
+import { AttaieGoogleMap } from '../components/map/AttaieGoogleMap';
 import defaultExteriorImg from '../assets/images/project_exterior_elevation_1793995966183.jpg';
 import defaultFurnishedPlanImg from '../assets/images/floorplan_furnished_3d_1793995968986.jpg';
 
@@ -166,7 +167,7 @@ export default function ProjectDetailPage() {
             />
 
             <div className="flex flex-col lg:flex-row gap-12 mt-10">
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-6">
                   <Badge type={project.status} />
                   {project.available_units !== undefined && project.total_units !== undefined && (
@@ -249,6 +250,36 @@ export default function ProjectDetailPage() {
                   projectName={project.name}
                   masterplanImage={project.masterplan_image}
                 />
+
+                {/* Project Location, Neighborhood & Commute Map */}
+                <div className="mt-10">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-1 h-5 bg-brand-gold rounded-full" />
+                    <h2 className="text-xl font-bold text-brand-navy">
+                      Project Location, Neighborhood & Commute Map
+                    </h2>
+                  </div>
+                  <AttaieGoogleMap
+                    mode="single-property"
+                    items={[
+                      {
+                        id: `project-${project.id}`,
+                        title: project.name,
+                        locationQuery: project.location || 'Wazir Akbar Khan, Kabul',
+                        priceDisplay:
+                          project.available_units !== undefined
+                            ? `${project.available_units} Units Available`
+                            : undefined,
+                        type: 'Signature Project',
+                        status: project.status,
+                        imageUrl: project.image_url,
+                      },
+                    ]}
+                    heightClass="h-[460px]"
+                    showNeighborhoodTools={true}
+                    showDirections={true}
+                  />
+                </div>
               </div>
 
               <aside className="w-full lg:w-96 shrink-0">

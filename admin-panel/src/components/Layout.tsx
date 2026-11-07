@@ -340,6 +340,9 @@ export default function Layout({ children }: { children: ReactNode }) {
       <div style={S.footer}>
         {version && <p style={S.footerText}>v{version}</p>}
         <p style={S.footerText}>Attaie Properties</p>
+        <p style={{ ...S.footerText, fontSize: '0.68rem', color: '#B8944A', marginTop: '0.15rem' }}>
+          Developed by Mohammad Roheen Ahmadi in Attaie Properties
+        </p>
         <button style={S.logoutBtn} onClick={handleLogout}>Logout</button>
       </div>
     </>

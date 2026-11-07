@@ -17,6 +17,7 @@ import { VisitRequestDialog } from '../components/forms/VisitRequestDialog';
 import { SeoHead } from '../components/seo/SeoHead';
 import { buildPropertySeo } from '../lib/seoConfig';
 import { Breadcrumbs } from '../components/ui/Breadcrumbs';
+import { AttaieGoogleMap } from '../components/map/AttaieGoogleMap';
 
 export default function PropertyDetailPage() {
   const { t } = useTranslation();
@@ -239,10 +240,50 @@ export default function PropertyDetailPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: '-40px' }}
                   transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                  className="mb-8"
                 >
                   <VideoPlayer url={property.video_url} title={property.title} />
                 </motion.div>
               )}
+
+              {/* Interactive Google Map & Neighborhood Explorer */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-40px' }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                className="mt-8"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-1 h-5 bg-brand-gold rounded-full" />
+                  <h2 className="text-xl font-bold text-brand-navy">
+                    Location, Neighborhood & Commute Map
+                  </h2>
+                </div>
+                <AttaieGoogleMap
+                  mode="single-property"
+                  items={[
+                    {
+                      id: property.id,
+                      title: property.title,
+                      locationQuery: property.location || 'Kabul, Afghanistan',
+                      priceDisplay:
+                        property.listing_type === 'rent'
+                          ? `$${property.price.toLocaleString()} / mo`
+                          : `$${property.price.toLocaleString()}`,
+                      type: property.type,
+                      status: property.status,
+                      beds: property.beds,
+                      baths: property.baths,
+                      area: property.area,
+                      imageUrl: property.image_url,
+                    },
+                  ]}
+                  heightClass="h-[460px]"
+                  showNeighborhoodTools={true}
+                  showDirections={true}
+                />
+              </motion.div>
             </div>
 
             {/* Sidebar */}

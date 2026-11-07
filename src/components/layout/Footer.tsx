@@ -170,7 +170,19 @@ const Footer = () => {
         <div className="relative pt-8 mt-0">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-brand-gold/30 to-transparent" />
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-neutral-500">
-            <p>{t('footer.rights')}</p>
+            <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 text-center md:text-start">
+              <p>{t('footer.rights')}</p>
+              <span className="hidden sm:inline text-brand-gold/40">•</span>
+              <p className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-brand-navy/5 border border-brand-gold/20 text-xs font-semibold text-brand-navy">
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-gold shrink-0" />
+                <span>
+                  {t(
+                    'footer.developerCredit',
+                    'Developed by Mohammad Roheen Ahmadi in Attaie Properties'
+                  )}
+                </span>
+              </p>
+            </div>
             <div className="flex gap-6">
               <a href="#" className="hover:text-brand-gold transition-colors link-underline">
                 {t('footer.privacy')}
