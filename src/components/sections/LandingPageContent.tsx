@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   motion,
@@ -25,7 +25,11 @@ import {
   MessageCircle,
   Phone,
   Calendar,
+  RotateCcw,
+  Check,
 } from 'lucide-react';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import { PromoBanner } from './PromoBanner';
 import { WhyAttaieSection } from './WhyAttaieSection';
 import { PopularLocationsSection } from './PopularLocationsSection';
@@ -34,10 +38,10 @@ import { TrustBlock } from './TrustBlock';
 import { ServicesSection } from './ServicesSection';
 import { HotDealsSection } from './HotDealsSection';
 import { NewsletterBanner } from './NewsletterBanner';
+import { HeroTwoLayerBackdrop } from './HeroBuildingOverlay';
 import { PropertyCard } from '../ui/PropertyCard';
 import { ProjectCard } from '../ui/ProjectCard';
 import { SectionHeader } from '../ui/SectionHeader';
-import { HorizontalCarousel } from '../ui/HorizontalCarousel';
 import { ClickToCallButton } from '../ui/ClickToCallButton';
 import { getProperties, getProjects, type Property, type Project } from '../../lib/dbService';
 import defaultExteriorImg from '../../assets/images/project_exterior_elevation_1793995966183.jpg';
@@ -188,6 +192,7 @@ function toPropertyCardProps(p: Property) {
     type: p.type,
     listingType: p.listing_type,
     image: p.image_url,
+    galleryImages: p.gallery_images,
   };
 }
 
@@ -199,6 +204,8 @@ function toProjectCardProps(p: Project) {
     deliveryDate: p.delivery_date ?? undefined,
     status: p.status,
     availableUnits: p.available_units,
+    totalUnits: p.total_units,
+    description: p.description,
     image: p.image_url,
   };
 }
@@ -210,36 +217,175 @@ const KABUL_LOCATIONS = [
   { label: 'All Kabul', value: '' },
   { label: 'Wazir Akbar Khan', value: 'Wazir Akbar Khan' },
   { label: 'Shahr-e-Naw', value: 'Shahr-e-Naw' },
+  { label: 'Sherpur Enclave', value: 'Sherpur' },
   { label: 'Karte Parwan', value: 'Karte Parwan' },
   { label: 'Karte Char', value: 'Karte Char' },
+  { label: 'Karte Se', value: 'Karte Se' },
+  { label: 'Kolola Pushta', value: 'Kolola Pushta' },
   { label: 'Darulaman', value: 'Darulaman' },
   { label: 'Microrayan', value: 'Microrayan' },
+  { label: 'Taimani', value: 'Taimani' },
 ];
 
 const PROPERTY_TYPE_OPTIONS = [
   { label: 'All Types', value: '' },
   { label: 'Apartments', value: 'Apartment' },
   { label: 'Houses', value: 'House' },
-  { label: 'Villas', value: 'Villa' },
-  { label: 'Commercial', value: 'Commercial' },
+  { label: 'Luxury Villas', value: 'Villa' },
+  { label: 'Commercial Spaces', value: 'Commercial' },
+  { label: 'Development Land', value: 'Land' },
 ];
 
 const BEDROOM_OPTIONS = [
   { label: 'Any', value: '' },
-  { label: '1+ Bedroom', value: '1' },
+  { label: 'Studio / 1 Bed', value: '1' },
   { label: '2+ Bedrooms', value: '2' },
   { label: '3+ Bedrooms', value: '3' },
   { label: '4+ Bedrooms', value: '4' },
   { label: '5+ Bedrooms', value: '5+' },
+  { label: '6+ Bedrooms', value: '6+' },
 ];
 
 const BUDGET_OPTIONS = [
   { label: 'Any Budget', value: '' },
-  { label: 'Under $100,000', value: '100000' },
-  { label: 'Up to $250,000', value: '250000' },
+  { label: 'Under $75,000', value: '75000' },
+  { label: 'Up to $125,000', value: '125000' },
+  { label: 'Up to $200,000', value: '200000' },
+  { label: 'Up to $350,000', value: '350000' },
   { label: 'Up to $500,000', value: '500000' },
-  { label: '$500,000+', value: '1000000' },
+  { label: '$500,000+ Luxury', value: '1000000' },
 ];
+
+interface HeroSelectOption {
+  label: string;
+  value: string;
+}
+
+function HeroCustomSelect({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+  icon: Icon,
+  hasRightDivider = false,
+  colSpanClass = 'lg:col-span-3',
+}: {
+  id: string;
+  label: string;
+  value: string;
+  options: HeroSelectOption[];
+  onChange: (nextVal: string) => void;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  hasRightDivider?: boolean;
+  colSpanClass?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selectedOption = options.find((opt) => opt.value === value) || options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div
+      ref={containerRef}
+      className={`${colSpanClass} relative flex items-center gap-3 px-4 py-2 ${
+        hasRightDivider ? 'lg:border-r border-neutral-200' : ''
+      }`}
+    >
+      <div
+        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+          open || value
+            ? 'bg-brand-gold text-white shadow-gold-sm'
+            : 'bg-brand-gold/10 text-brand-gold'
+        }`}
+      >
+        <Icon size={20} />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <span
+          id={`${id}-label`}
+          className="block text-[11px] font-semibold text-neutral-500 select-none"
+        >
+          {label}
+        </span>
+        <button
+          id={id}
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-labelledby={`${id}-label`}
+          onClick={() => setOpen((prev) => !prev)}
+          className="w-full flex items-center justify-between gap-2 text-left font-bold text-sm text-brand-navy hover:text-brand-gold focus:outline-none cursor-pointer pt-0.5 transition-colors"
+        >
+          <span className="truncate">{selectedOption.label}</span>
+          <ChevronDown
+            size={15}
+            className={`text-neutral-500 shrink-0 transition-transform duration-200 ${
+              open ? 'rotate-180 text-brand-gold' : ''
+            }`}
+          />
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.97 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            role="listbox"
+            aria-labelledby={`${id}-label`}
+            className="absolute left-2 right-2 top-[calc(100%+10px)] z-50 rounded-2xl bg-white/98 backdrop-blur-xl border border-brand-navy/12 shadow-brand-xl p-1.5 max-h-56 overflow-y-auto"
+          >
+            {options.map((opt) => {
+              const isSelected = opt.value === value;
+              return (
+                <button
+                  key={opt.label}
+                  type="button"
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-left ${
+                    isSelected
+                      ? 'bg-brand-navy text-white shadow-xs'
+                      : 'text-brand-navy hover:bg-brand-ivory hover:text-brand-gold'
+                  }`}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected && <Check size={14} className="text-brand-gold-lt shrink-0" />}
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 /**
  * 21st.dev + motion.dev Interactive Featured Project Carousel Card
@@ -506,6 +652,13 @@ export const LandingPageContent = () => {
   const [selectedBeds, setSelectedBeds] = useState('');
   const [selectedBudget, setSelectedBudget] = useState('');
 
+  const activeSearchCriteriaCount = [
+    selectedLocation,
+    selectedType,
+    selectedBeds,
+    selectedBudget,
+  ].filter(Boolean).length;
+
   useEffect(() => {
     Promise.all([
       getProperties().catch(() => FALLBACK_SHOWCASE_PROPERTIES),
@@ -541,6 +694,8 @@ export const LandingPageContent = () => {
     if (selectedLocation) params.set('search', selectedLocation);
     if (selectedType) params.set('type', selectedType);
     if (selectedType === 'Commercial') params.set('purpose', 'commercial');
+    if (selectedBeds) params.set('beds', selectedBeds);
+    if (selectedBudget) params.set('maxPrice', selectedBudget);
     const qs = params.toString();
     navigate(qs ? `/properties?${qs}` : '/properties');
   };
@@ -591,32 +746,12 @@ export const LandingPageContent = () => {
   return (
     <>
       {/* ── 1. STITCH ARCHITECTURAL HERO SECTION + FLOATING SEARCH BAR ── */}
-      <section className="relative pt-24 lg:pt-28 pb-12 overflow-hidden bg-brand-cream">
-        {/* Full-bleed Kabul Architectural Hero Backdrop */}
+      <section className="relative z-30 pt-24 lg:pt-28 pb-12 bg-brand-cream">
+        {/* Two-Layer Kabul Architectural Hero Backdrop:
+            Layer 1: Background Panorama (without building)
+            Layer 2: HeroBuildingLayer component (for transparent building cutout PNG/WebP) */}
         <div className="relative min-h-[540px] lg:min-h-[600px] flex flex-col justify-between">
-          <div className="absolute inset-0 z-0">
-            <img
-              src={stitchHeroImg}
-              alt="Attaie Properties — Modern Real Estate in Kabul, Afghanistan"
-              referrerPolicy="no-referrer"
-              className="w-full h-full object-cover object-right-top"
-            />
-            {/* Measured contrast scrim so left-side typography in brand-navy is crisp and readable */}
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  'linear-gradient(90deg, rgba(245,247,251,0.96) 0%, rgba(245,247,251,0.88) 38%, rgba(245,247,251,0.28) 68%, rgba(245,247,251,0.05) 100%)',
-              }}
-            />
-            <div
-              className="absolute inset-x-0 bottom-0 h-32"
-              style={{
-                background:
-                  'linear-gradient(to top, var(--color-brand-cream) 10%, rgba(245,247,251,0) 100%)',
-              }}
-            />
-          </div>
+          <HeroTwoLayerBackdrop />
 
           {/* Left Column Hero Copy */}
           <div className="container-custom relative z-10 pt-10 lg:pt-16 pb-10">
@@ -627,13 +762,13 @@ export const LandingPageContent = () => {
               className="max-w-xl"
             >
               <span className="eyebrow inline-block mb-3 tracking-[0.22em]">
-                REAL ESTATE IN KABUL
+                Attaie Properties
               </span>
 
               <h1 className="font-display font-extrabold text-brand-navy text-display tracking-tight leading-[1.06] mb-5">
                 Find Your
                 <br />
-                Ideal Property
+                Ideal Property With Us
               </h1>
 
               <p className="text-neutral-600 text-base md:text-lg leading-relaxed max-w-md mb-7">
@@ -675,136 +810,52 @@ export const LandingPageContent = () => {
               className="bg-white rounded-2xl p-3 md:p-4 shadow-brand-xl border border-brand-navy/8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 lg:gap-0 items-center"
             >
               {/* 1. Location */}
-              <div className="lg:col-span-3 flex items-center gap-3 px-4 py-2 lg:border-r border-neutral-200">
-                <div className="w-10 h-10 rounded-xl bg-brand-gold/10 text-brand-gold flex items-center justify-center shrink-0">
-                  <MapPin size={20} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <label
-                    htmlFor="hero-location"
-                    className="block text-[11px] font-semibold text-neutral-500"
-                  >
-                    Location
-                  </label>
-                  <div className="relative flex items-center">
-                    <select
-                      id="hero-location"
-                      value={selectedLocation}
-                      onChange={(e) => setSelectedLocation(e.target.value)}
-                      className="w-full appearance-none bg-transparent font-bold text-sm text-brand-navy pr-5 focus:outline-none cursor-pointer truncate"
-                    >
-                      {KABUL_LOCATIONS.map((loc) => (
-                        <option key={loc.label} value={loc.value}>
-                          {loc.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown
-                      size={15}
-                      className="text-neutral-500 pointer-events-none absolute right-0"
-                    />
-                  </div>
-                </div>
-              </div>
+              <HeroCustomSelect
+                id="hero-location"
+                label="Location"
+                value={selectedLocation}
+                options={KABUL_LOCATIONS}
+                onChange={setSelectedLocation}
+                icon={MapPin}
+                hasRightDivider={true}
+                colSpanClass="lg:col-span-3"
+              />
 
               {/* 2. Property Type */}
-              <div className="lg:col-span-3 flex items-center gap-3 px-4 py-2 lg:border-r border-neutral-200">
-                <div className="w-10 h-10 rounded-xl bg-brand-gold/10 text-brand-gold flex items-center justify-center shrink-0">
-                  <Building2 size={20} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <label
-                    htmlFor="hero-type"
-                    className="block text-[11px] font-semibold text-neutral-500"
-                  >
-                    Property Type
-                  </label>
-                  <div className="relative flex items-center">
-                    <select
-                      id="hero-type"
-                      value={selectedType}
-                      onChange={(e) => setSelectedType(e.target.value)}
-                      className="w-full appearance-none bg-transparent font-bold text-sm text-brand-navy pr-5 focus:outline-none cursor-pointer truncate"
-                    >
-                      {PROPERTY_TYPE_OPTIONS.map((opt) => (
-                        <option key={opt.label} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown
-                      size={15}
-                      className="text-neutral-500 pointer-events-none absolute right-0"
-                    />
-                  </div>
-                </div>
-              </div>
+              <HeroCustomSelect
+                id="hero-type"
+                label="Property Type"
+                value={selectedType}
+                options={PROPERTY_TYPE_OPTIONS}
+                onChange={setSelectedType}
+                icon={Building2}
+                hasRightDivider={true}
+                colSpanClass="lg:col-span-3"
+              />
 
               {/* 3. Bedrooms */}
-              <div className="lg:col-span-2 flex items-center gap-3 px-4 py-2 lg:border-r border-neutral-200">
-                <div className="w-10 h-10 rounded-xl bg-brand-gold/10 text-brand-gold flex items-center justify-center shrink-0">
-                  <Bed size={20} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <label
-                    htmlFor="hero-beds"
-                    className="block text-[11px] font-semibold text-neutral-500"
-                  >
-                    Bedrooms
-                  </label>
-                  <div className="relative flex items-center">
-                    <select
-                      id="hero-beds"
-                      value={selectedBeds}
-                      onChange={(e) => setSelectedBeds(e.target.value)}
-                      className="w-full appearance-none bg-transparent font-bold text-sm text-brand-navy pr-5 focus:outline-none cursor-pointer truncate"
-                    >
-                      {BEDROOM_OPTIONS.map((opt) => (
-                        <option key={opt.label} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown
-                      size={15}
-                      className="text-neutral-500 pointer-events-none absolute right-0"
-                    />
-                  </div>
-                </div>
-              </div>
+              <HeroCustomSelect
+                id="hero-beds"
+                label="Bedrooms"
+                value={selectedBeds}
+                options={BEDROOM_OPTIONS}
+                onChange={setSelectedBeds}
+                icon={Bed}
+                hasRightDivider={true}
+                colSpanClass="lg:col-span-2"
+              />
 
               {/* 4. Budget */}
-              <div className="lg:col-span-2 flex items-center gap-3 px-4 py-2">
-                <div className="w-10 h-10 rounded-xl bg-brand-gold/10 text-brand-gold flex items-center justify-center shrink-0">
-                  <CircleDollarSign size={20} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <label
-                    htmlFor="hero-budget"
-                    className="block text-[11px] font-semibold text-neutral-500"
-                  >
-                    Budget
-                  </label>
-                  <div className="relative flex items-center">
-                    <select
-                      id="hero-budget"
-                      value={selectedBudget}
-                      onChange={(e) => setSelectedBudget(e.target.value)}
-                      className="w-full appearance-none bg-transparent font-bold text-sm text-brand-navy pr-5 focus:outline-none cursor-pointer truncate"
-                    >
-                      {BUDGET_OPTIONS.map((opt) => (
-                        <option key={opt.label} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown
-                      size={15}
-                      className="text-neutral-500 pointer-events-none absolute right-0"
-                    />
-                  </div>
-                </div>
-              </div>
+              <HeroCustomSelect
+                id="hero-budget"
+                label="Budget"
+                value={selectedBudget}
+                options={BUDGET_OPTIONS}
+                onChange={setSelectedBudget}
+                icon={CircleDollarSign}
+                hasRightDivider={false}
+                colSpanClass="lg:col-span-2"
+              />
 
               {/* 5. Search CTA Button */}
               <div className="lg:col-span-2 pl-0 lg:pl-3">
@@ -817,6 +868,48 @@ export const LandingPageContent = () => {
                 </button>
               </div>
             </motion.form>
+
+            {/* Motion.dev Live Search Feedback Bar */}
+            <AnimatePresence>
+              {activeSearchCriteriaCount > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-3 px-4 py-2.5 rounded-xl bg-brand-navy/90 backdrop-blur-md text-white text-xs flex flex-wrap items-center justify-between gap-3 shadow-brand-md"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-bold text-brand-gold">Active Search Filter:</span>
+                    <span>
+                      {[
+                        selectedLocation || 'All Kabul',
+                        selectedType || 'All Property Types',
+                        selectedBeds ? `${selectedBeds}+ Beds` : null,
+                        selectedBudget
+                          ? `Up to $${Number(selectedBudget).toLocaleString()}`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedLocation('');
+                      setSelectedType('');
+                      setSelectedBeds('');
+                      setSelectedBudget('');
+                    }}
+                    className="inline-flex items-center gap-1 text-white/75 hover:text-white font-semibold cursor-pointer"
+                  >
+                    <RotateCcw size={12} />
+                    <span>Reset</span>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </section>
@@ -917,27 +1010,29 @@ export const LandingPageContent = () => {
           </div>
 
           {/* Interactive Filter Tabs */}
-          <div className="flex items-center gap-2 mb-8 flex-wrap">
-            {FILTER_TABS.map((tab) => {
-              const isActive = tab === activeFilter;
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveFilter(tab)}
-                  className={`relative px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-brand-navy text-white shadow-brand-sm'
-                      : 'bg-white text-neutral-600 border border-brand-navy/10 hover:border-brand-gold hover:text-brand-navy'
-                  }`}
-                >
-                  {tab}
-                </button>
-              );
-            })}
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+            <div className="flex items-center gap-2 flex-wrap">
+              {FILTER_TABS.map((tab) => {
+                const isActive = tab === activeFilter;
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveFilter(tab)}
+                    className={`relative px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      isActive
+                        ? 'bg-brand-navy text-white shadow-brand-sm'
+                        : 'bg-white text-neutral-600 border border-brand-navy/10 hover:border-brand-gold hover:text-brand-navy'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* 3-Column Property Grid */}
+          {/* Featured Listings: Default Swiper Carousel */}
           <AnimatePresence mode="wait">
             <motion.div
               key={activeFilter}
@@ -951,11 +1046,26 @@ export const LandingPageContent = () => {
                   Loading properties…
                 </div>
               ) : filteredProperties.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredProperties.slice(0, 6).map((prop) => (
-                    <PropertyCard key={prop.id} {...prop} />
+                <Swiper
+                  modules={[Navigation, Pagination, Autoplay]}
+                  spaceBetween={24}
+                  slidesPerView={1}
+                  navigation
+                  pagination={{ clickable: true }}
+                  autoplay={{ delay: 5500, disableOnInteraction: true }}
+                  breakpoints={{
+                    640: { slidesPerView: 1.5 },
+                    768: { slidesPerView: 2 },
+                    1024: { slidesPerView: 3 },
+                  }}
+                  className="pb-12"
+                >
+                  {filteredProperties.map((prop) => (
+                    <SwiperSlide key={prop.id} className="h-auto">
+                      <PropertyCard {...prop} />
+                    </SwiperSlide>
                   ))}
-                </div>
+                </Swiper>
               ) : (
                 <div className="py-16 text-center text-neutral-400 text-sm">
                   No properties match this filter.
@@ -979,6 +1089,13 @@ export const LandingPageContent = () => {
         ctaLabel="List Your Property"
         ctaHref="/contact"
         imageSide="left"
+        projectCovers={projects
+          .filter((p) => Boolean(p.image_url))
+          .map((p) => ({
+            imageUrl: p.image_url as string,
+            projectName: p.name,
+            projectLocation: p.location,
+          }))}
       />
 
       <WhyAttaieSection />
@@ -993,7 +1110,7 @@ export const LandingPageContent = () => {
 
       <HotDealsSection />
 
-      {/* ── Signature Projects ────────────────────────────────────────────── */}
+      {/* ── Signature Projects (Swiper) ──────────────────────────────────── */}
       <section className="section-padding" style={{ background: 'var(--color-brand-cream)' }}>
         <div className="container-custom">
           <SectionHeader
@@ -1006,12 +1123,24 @@ export const LandingPageContent = () => {
           {loadingFeatured && featuredProjects.length === 0 ? (
             <div className="py-20 text-center text-neutral-400 text-sm">Loading projects…</div>
           ) : featuredProjects.length > 0 ? (
-            <HorizontalCarousel
-              items={featuredProjects}
-              cardWidth={340}
-              gap={24}
-              renderItem={(proj) => <ProjectCard {...proj} />}
-            />
+            <Swiper
+              modules={[Navigation, Pagination]}
+              spaceBetween={24}
+              slidesPerView={1}
+              navigation
+              pagination={{ clickable: true }}
+              breakpoints={{
+                768: { slidesPerView: 2 },
+                1024: { slidesPerView: 3 },
+              }}
+              className="pb-12"
+            >
+              {featuredProjects.map((proj) => (
+                <SwiperSlide key={proj.id} className="h-auto">
+                  <ProjectCard {...proj} />
+                </SwiperSlide>
+              ))}
+            </Swiper>
           ) : (
             <div className="py-20 text-center text-neutral-400 text-sm">
               No projects available yet.

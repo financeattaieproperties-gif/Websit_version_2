@@ -406,6 +406,7 @@ const MapWorkspaceInner: React.FC<{
   const [resolvedPins, setResolvedPins] = useState<ResolvedPinItem[]>([]);
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
   const [resolvingLocations, setResolvingLocations] = useState(false);
+  const [mapTilesLoaded, setMapTilesLoaded] = useState(false);
 
   // Places Autocomplete state (AutocompleteSuggestion.fetchAutocompleteSuggestions + AutocompleteSessionToken)
   // Reference: https://developers.google.com/maps/documentation/javascript/place-autocomplete-data?utm_campaign=gmp_mcp_codeassist_v1_aistudio
@@ -886,12 +887,79 @@ const MapWorkspaceInner: React.FC<{
 
       {/* Map Viewport (Explicit height prevents CF2 0x0 collapse) */}
       <div className={`relative w-full ${heightClassName}`}>
+        {/* Skeleton loading overlay until map is fully initialized */}
+        {(!map || !mapTilesLoaded || resolvingLocations) && (
+          <div
+            className="absolute inset-0 z-20 bg-brand-ivory flex flex-col justify-between p-6 pointer-events-none animate-pulse overflow-hidden"
+            aria-label="Loading interactive map"
+            role="status"
+          >
+            {/* Top controls skeleton */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-neutral-300" />
+                <div className="space-y-1.5">
+                  <div className="w-36 h-3.5 bg-neutral-300 rounded" />
+                  <div className="w-48 h-2.5 bg-neutral-200 rounded" />
+                </div>
+              </div>
+              <div className="hidden sm:flex items-center gap-2">
+                <div className="w-20 h-8 bg-neutral-200 rounded-lg" />
+                <div className="w-24 h-8 bg-neutral-300 rounded-lg" />
+              </div>
+            </div>
+
+            {/* Center simulated map pins & grid lines */}
+            <div className="relative flex-1 my-6 rounded-xl border border-dashed border-neutral-300/80 flex items-center justify-center">
+              <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 gap-px opacity-30">
+                <div className="border-r border-b border-neutral-300" />
+                <div className="border-r border-b border-neutral-300" />
+                <div className="border-b border-neutral-300" />
+                <div className="border-r border-b border-neutral-300" />
+                <div className="border-r border-b border-neutral-300" />
+                <div className="border-b border-neutral-300" />
+                <div className="border-r border-neutral-300" />
+                <div className="border-r border-neutral-300" />
+                <div />
+              </div>
+
+              {/* Pulsing center marker indicator */}
+              <div className="relative z-10 flex flex-col items-center gap-2 bg-white/80 backdrop-blur-xs px-5 py-3.5 rounded-2xl border border-white/60 shadow-brand-sm">
+                <div className="w-10 h-10 rounded-full bg-brand-gold/15 text-brand-gold flex items-center justify-center animate-bounce">
+                  <MapPin size={22} className="text-brand-gold" />
+                </div>
+                <div className="text-center">
+                  <p className="text-xs font-bold text-brand-navy">Initializing Kabul Map</p>
+                  <p className="text-[11px] text-neutral-500">Loading properties and spatial coordinates…</p>
+                </div>
+              </div>
+
+              {/* Simulated floating pins in map space */}
+              <div className="absolute top-1/4 left-1/4 w-7 h-7 rounded-full bg-neutral-300 shadow-xs flex items-center justify-center">
+                <div className="w-3 h-3 rounded-full bg-brand-navy/30" />
+              </div>
+              <div className="absolute bottom-1/3 right-1/4 w-7 h-7 rounded-full bg-neutral-300 shadow-xs flex items-center justify-center">
+                <div className="w-3 h-3 rounded-full bg-brand-gold/40" />
+              </div>
+              <div className="absolute top-1/3 right-1/3 w-6 h-6 rounded-full bg-neutral-200" />
+            </div>
+
+            {/* Bottom listing pill skeleton */}
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="w-40 h-8 bg-neutral-300 rounded-xl shrink-0" />
+              <div className="w-44 h-8 bg-neutral-200 rounded-xl shrink-0 hidden sm:block" />
+              <div className="w-36 h-8 bg-neutral-200 rounded-xl shrink-0 hidden md:block" />
+            </div>
+          </div>
+        )}
+
         <GoogleMap
           mapId="DEMO_MAP_ID"
-          defaultCenter={{ lat: 0, lng: 0 }}
-          defaultZoom={2}
+          defaultCenter={{ lat: 34.5355, lng: 69.1763 }}
+          defaultZoom={12}
           gestureHandling="greedy"
           internalUsageAttributionIds={[ATTRIBUTION_ID]}
+          onTilesLoaded={() => setMapTilesLoaded(true)}
           style={{ width: '100%', height: '100%' }}
         >
           {/* Property / Project / Branch Pins */}

@@ -1,8 +1,10 @@
 node_modules/
 .next/
 out/
+.env
 .env.local
 .env*.local
+.gmp_cache/
 *.tsbuildinfo
 public/api/db.php
 admin-panel/node_modules/

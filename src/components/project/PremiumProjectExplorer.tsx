@@ -5,32 +5,19 @@ import {
   useMotionValue,
   useSpring,
   useTransform,
-} from 'framer-motion';
+} from 'motion/react';
 import {
-  Layers,
-  Box,
   SlidersHorizontal,
-  Compass,
-  Maximize2,
-  ZoomIn,
-  ZoomOut,
   RotateCcw,
   Upload,
-  Check,
   Building2,
-  Sun,
-  ArrowUpRight,
   Eye,
   MoveHorizontal,
-  Grid,
-  Calculator,
   X,
 } from 'lucide-react';
 import defaultExteriorImg from '../../assets/images/project_exterior_elevation_1793995966183.jpg';
 import defaultTechnicalPlanImg from '../../assets/images/floorplan_technical_blueprint_1793995969202.jpg';
 import defaultFurnishedPlanImg from '../../assets/images/floorplan_furnished_3d_1793995968986.jpg';
-
-export type ExplorerVariant = 'variant-1' | 'variant-2' | 'variant-3';
 
 export interface ExplorerCustomAssets {
   exteriorUrl: string;
@@ -541,12 +528,7 @@ export const PremiumProjectExplorer: React.FC<PremiumProjectExplorerProps> = ({
   initialExteriorUrl,
   initialTechnicalPlanUrl,
   initialFurnishedPlanUrl,
-  onRequestVisit,
 }) => {
-  // Active Direction Variant ('variant-1' | 'variant-2' | 'variant-3')
-  const [activeVariant, setActiveVariant] = useState<ExplorerVariant>('variant-1');
-
-  // Custom or default architectural assets
   const [customAssets, setCustomAssets] = useState<ExplorerCustomAssets>(() => {
     try {
       const saved = localStorage.getItem(CUSTOM_ASSETS_STORAGE_KEY);
@@ -570,34 +552,21 @@ export const PremiumProjectExplorer: React.FC<PremiumProjectExplorerProps> = ({
 
   const [assetDrawerOpen, setAssetDrawerOpen] = useState(false);
 
-  // Shared Explorer State across the 3 variants
+  // Explorer State
   const [selectedFloorNum, setSelectedFloorNum] = useState<number>(8);
   const [hoveredFloorNum, setHoveredFloorNum] = useState<number | null>(null);
   const [selectedTypologyId, setSelectedTypologyId] = useState<'type-a' | 'type-b' | 'penthouse'>('type-a');
   const [selectedRoomId, setSelectedRoomId] = useState<string>('salon');
+  const [showDimensionPins, setShowDimensionPins] = useState<boolean>(true);
 
-  // Variant 1: Split X-Ray Slider (0 = 100% Furnished 3D, 100 = 100% Technical CAD)
-  const [splitPct, setSplitPct] = useState<number>(48);
+  // Default 50/50 X-Ray Split Slider
+  const [splitPct, setSplitPct] = useState<number>(50);
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const [isDraggingSplit, setIsDraggingSplit] = useState(false);
-  const splitMotion = useMotionValue(48);
+  const splitMotion = useMotionValue(50);
   const smoothSplit = useSpring(splitMotion, { stiffness: 320, damping: 32 });
   const clipPathRight = useTransform(smoothSplit, (v) => `inset(0 ${100 - v}% 0 0)`);
   const splitHandleLeft = useTransform(smoothSplit, (v) => `${v}%`);
-
-  // Variant 2: 3D Isometric Stack & Camera Controls
-  const [isoViewMode, setIsoViewMode] = useState<'3d-stack' | '2d-plate'>('3d-stack');
-  const [isoPlanLayer, setIsoPlanLayer] = useState<'furnished' | 'technical'>('furnished');
-  const [isoSpread, setIsoSpread] = useState<number>(22);
-  const [spotlightPos, setSpotlightPos] = useState<{ x: number; y: number }>({ x: 200, y: 120 });
-
-  // Variant 3: Architectural Blueprint Workbench Controls
-  const [workbenchMode, setWorkbenchMode] = useState<'technical' | 'furnished' | 'side-by-side'>('side-by-side');
-  const [zoomScale, setZoomScale] = useState<number>(1);
-  const [showDimensionPins, setShowDimensionPins] = useState<boolean>(true);
-  const [solarHour, setSolarHour] = useState<number>(15.5); // 07:00 to 18:30
-  const [downPaymentPct, setDownPaymentPct] = useState<number>(30);
-  const [installmentMonths, setInstallmentMonths] = useState<number>(24);
 
   const activeFloor =
     TOWER_FLOORS.find((f) => f.floor === (hoveredFloorNum ?? selectedFloorNum)) || TOWER_FLOORS[4];
@@ -607,7 +576,6 @@ export const PremiumProjectExplorer: React.FC<PremiumProjectExplorerProps> = ({
   const activeRoom =
     activeTypology.rooms.find((r) => r.id === selectedRoomId) || activeTypology.rooms[0];
 
-  // Sync typology when user clicks a floor
   const handleSelectFloor = (floorSpec: FloorSpec) => {
     setSelectedFloorNum(floorSpec.floor);
     setSelectedTypologyId(floorSpec.typologyId);
@@ -617,7 +585,6 @@ export const PremiumProjectExplorer: React.FC<PremiumProjectExplorerProps> = ({
     }
   };
 
-  // Update motion value when splitPct changes
   useEffect(() => {
     splitMotion.set(splitPct);
   }, [splitPct, splitMotion]);
@@ -650,7 +617,6 @@ export const PremiumProjectExplorer: React.FC<PremiumProjectExplorerProps> = ({
     };
   }, [isDraggingSplit, updateSplitFromClientX]);
 
-  // Handle local image file upload (reads as Data URL and saves to state + localStorage)
   const handleFileUpload = (
     slot: keyof Pick<ExplorerCustomAssets, 'exteriorUrl' | 'technicalPlanUrl' | 'furnishedPlanUrl'>,
     file: File | undefined
@@ -687,26 +653,14 @@ export const PremiumProjectExplorer: React.FC<PremiumProjectExplorerProps> = ({
     }
   };
 
-  // Financial math for Variant 3
   const unitPrice = lockedFloor.startingPriceUsd || activeTypology.basePriceUsd;
-  const downPaymentUsd = Math.round((unitPrice * downPaymentPct) / 100);
-  const financedUsd = unitPrice - downPaymentUsd;
-  const monthlyPaymentUsd = Math.round(financedUsd / installmentMonths);
-  const pricePerSqm = Math.round(unitPrice / activeTypology.totalAreaSqm);
-
-  // Solar angle calculation for Variant 3
-  const solarProgress = (solarHour - 7) / 11.5; // 0 (East 7am) to 1 (West 6:30pm)
-  const solarAzimuthDeg = Math.round(95 + solarProgress * 170);
-  const solarTimeFormatted = `${String(Math.floor(solarHour)).padStart(2, '0')}:${
-    solarHour % 1 >= 0.5 ? '30' : '00'
-  }`;
 
   return (
     <section
       id="interactive-project-explorer"
       className="my-12 rounded-2xl bg-brand-navy-deep text-white border border-white/10 overflow-hidden shadow-brand-xl"
     >
-      {/* Top Studio Bar: Title + 3-Direction Variant Switcher + Custom Asset Studio Button */}
+      {/* Top Studio Bar: Title + Elevation + X-Ray Split Indicator + Custom Asset Studio Button */}
       <div className="border-b border-white/10 bg-brand-navy px-5 py-5 sm:px-8">
         <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5">
           <div>
@@ -726,67 +680,16 @@ export const PremiumProjectExplorer: React.FC<PremiumProjectExplorerProps> = ({
             </h2>
           </div>
 
-          {/* 3-Direction Segmented Switcher (Motion layoutId shared tab indicator) */}
           <div className="flex flex-wrap items-center gap-2">
-            <div
-              role="tablist"
-              aria-label="Project Explorer Design Directions"
-              className="inline-flex flex-wrap items-center gap-1 p-1.5 rounded-xl bg-brand-navy-deep border border-white/10"
-            >
-              {(
-                [
-                  {
-                    id: 'variant-1' as const,
-                    index: '01',
-                    label: 'Elevation + X-Ray Split',
-                    icon: SlidersHorizontal,
-                  },
-                  {
-                    id: 'variant-2' as const,
-                    index: '02',
-                    label: '3D Isometric Stack + Bento',
-                    icon: Box,
-                  },
-                  {
-                    id: 'variant-3' as const,
-                    index: '03',
-                    label: 'Blueprint CAD Workbench',
-                    icon: Layers,
-                  },
-                ] as const
-              ).map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeVariant === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => setActiveVariant(tab.id)}
-                    className={`relative px-3.5 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap shrink-0 cursor-pointer flex items-center gap-2 ${
-                      isActive ? 'text-white' : 'text-white/65 hover:text-white'
-                    }`}
-                  >
-                    {isActive && (
-                      <motion.span
-                        layoutId="explorer-variant-pill"
-                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                        className="absolute inset-0 rounded-lg bg-brand-gold shadow-sm"
-                      />
-                    )}
-                    <span className="relative z-10 font-mono text-[11px] opacity-80">{tab.index}.</span>
-                    <Icon size={14} className="relative z-10 shrink-0" />
-                    <span className="relative z-10">{tab.label}</span>
-                  </button>
-                );
-              })}
+            <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-brand-gold text-white text-xs font-bold shadow-sm">
+              <SlidersHorizontal size={14} className="shrink-0" />
+              <span>Elevation + 50/50 X-Ray Split</span>
             </div>
 
             <button
               type="button"
               onClick={() => setAssetDrawerOpen((v) => !v)}
-              className={`px-3.5 py-2.5 rounded-xl text-xs font-bold border transition-colors whitespace-nowrap shrink-0 cursor-pointer inline-flex items-center gap-2 ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors whitespace-nowrap shrink-0 cursor-pointer inline-flex items-center gap-2 ${
                 assetDrawerOpen
                   ? 'bg-white text-brand-navy border-white'
                   : 'bg-white/5 hover:bg-white/10 text-white border-white/15'
@@ -812,10 +715,10 @@ export const PremiumProjectExplorer: React.FC<PremiumProjectExplorerProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                   <div>
                     <h3 className="text-sm font-bold text-white">
-                      Load Your Project Exterior, Technical Floor Plan & Furnished Floor Plan
+                      Load Your Project Exterior &amp; X-Ray Split Floor Plans
                     </h3>
                     <p className="text-xs text-white/65">
-                      Upload local files or paste image URLs below. All three explorer variants update immediately.
+                      Upload local files or paste image URLs below to update the Elevation + 50/50 X-Ray Split stage.
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -844,19 +747,19 @@ export const PremiumProjectExplorer: React.FC<PremiumProjectExplorerProps> = ({
                       {
                         key: 'exteriorUrl' as const,
                         title: '01. Exterior Building Elevation',
-                        subtitle: 'Used in Tower Floor Selector & 3D Reference',
+                        subtitle: 'Used in Tower Floor Selector',
                         value: customAssets.exteriorUrl,
                       },
                       {
                         key: 'technicalPlanUrl' as const,
-                        title: '02. Technical CAD Floor Plan',
-                        subtitle: '2D Architectural Blueprint with Dimensions',
+                        title: '02. Left X-Ray Layer',
+                        subtitle: '2D Architectural Plan Layer',
                         value: customAssets.technicalPlanUrl,
                       },
                       {
                         key: 'furnishedPlanUrl' as const,
-                        title: '03. Furnished Apartment Floor Plan',
-                        subtitle: '3D Top-Down Dollhouse / Interior Layout',
+                        title: '03. Right X-Ray Layer',
+                        subtitle: 'Spatial Interior Plan Layer',
                         value: customAssets.furnishedPlanUrl,
                       },
                     ] as const
@@ -909,7 +812,7 @@ export const PremiumProjectExplorer: React.FC<PremiumProjectExplorerProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Shared KPI Telemetry Bar */}
+      {/* Shared KPI Telemetry Bar (No Book Viewing button) */}
       <div className="grid grid-cols-2 lg:grid-cols-5 border-b border-white/10 bg-brand-navy-deep/70 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
         <div className="px-5 py-3.5">
           <p className="text-[11px] text-white/55">Selected Floor Plate</p>
@@ -935,911 +838,267 @@ export const PremiumProjectExplorer: React.FC<PremiumProjectExplorerProps> = ({
             {activeRoom.nameEn.split(' ')[0]} · {activeRoom.areaSqm} m²
           </p>
         </div>
-        <div className="px-5 py-3.5 col-span-2 lg:col-span-1 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] text-white/55">Starting Valuation</p>
-            <p className="text-base font-bold text-white mt-0.5 tabular-nums">
-              ${unitPrice.toLocaleString()}
-            </p>
-          </div>
-          {onRequestVisit && (
-            <button
-              type="button"
-              onClick={() =>
-                onRequestVisit(
-                  `${projectName} — Floor ${lockedFloor.floor} (${activeTypology.name})`
-                )
-              }
-              className="px-3.5 py-2 rounded-lg bg-brand-gold hover:bg-brand-gold-dark text-white text-xs font-bold transition-colors whitespace-nowrap shrink-0 cursor-pointer inline-flex items-center gap-1"
-            >
-              <span>Book Viewing</span>
-              <ArrowUpRight size={13} />
-            </button>
-          )}
+        <div className="px-5 py-3.5 col-span-2 lg:col-span-1">
+          <p className="text-[11px] text-white/55">Starting Valuation</p>
+          <p className="text-base font-bold text-white mt-0.5 tabular-nums">
+            ${unitPrice.toLocaleString()}
+          </p>
         </div>
       </div>
 
-      {/* Main Variant Stage */}
-      <AnimatePresence mode="wait">
-        {activeVariant === 'variant-1' && (
-          <motion.div
-            key="variant-1"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="p-5 sm:p-8"
-          >
-            {/* Variant 01 Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-              <div>
-                <p className="text-xs font-semibold text-brand-gold-lt">
-                  01. Interactive Tower Elevation & Spring X-Ray Floor Plan Stage
-                </p>
-                <h3 className="text-xl font-bold text-white mt-1">
-                  Hover or select any residential floor on the tower facade, then drag the X-Ray curtain to compare Technical CAD vs. Furnished 3D
-                </h3>
-              </div>
+      {/* Elevation + 50/50 X-Ray Split Stage */}
+      <div className="p-5 sm:p-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+          <div>
+            <p className="text-xs font-semibold text-brand-gold-lt">
+              Interactive Tower Elevation &amp; 50/50 X-Ray Floor Plan Stage
+            </p>
+            <h3 className="text-xl font-bold text-white mt-1">
+              Hover or select any residential floor on the tower facade, then drag the 50/50 X-Ray curtain across the floor plate
+            </h3>
+          </div>
 
-              {/* Quick Split Presets */}
-              <div className="flex items-center gap-1.5 bg-brand-navy p-1 rounded-xl border border-white/10 self-start">
-                <button
-                  type="button"
-                  onClick={() => setSplitPct(96)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer ${
-                    splitPct > 80 ? 'bg-brand-gold text-white' : 'text-white/70 hover:text-white'
-                  }`}
-                >
-                  Technical Blueprint
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSplitPct(50)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer ${
-                    splitPct >= 25 && splitPct <= 80
-                      ? 'bg-brand-gold text-white'
-                      : 'text-white/70 hover:text-white'
-                  }`}
-                >
-                  50/50 X-Ray Split
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSplitPct(4)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer ${
-                    splitPct < 25 ? 'bg-brand-gold text-white' : 'text-white/70 hover:text-white'
-                  }`}
-                >
-                  Furnished 3D Plan
-                </button>
-              </div>
+          {/* 50/50 X-Ray Split Control Only */}
+          <div className="flex items-center gap-1.5 bg-brand-navy p-1 rounded-xl border border-white/10 self-start">
+            <button
+              type="button"
+              onClick={() => setSplitPct(50)}
+              className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-brand-gold text-white transition-colors whitespace-nowrap cursor-pointer"
+            >
+              50/50 X-Ray Split ({splitPct}%)
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          {/* Left 5 Cols: Interactive Exterior Elevation Facade */}
+          <div className="lg:col-span-5 flex flex-col rounded-xl bg-brand-navy border border-white/10 overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between text-xs">
+              <span className="font-bold text-white flex items-center gap-2">
+                <Building2 size={15} className="text-brand-gold-lt" />
+                <span>Exterior Elevation Selector</span>
+              </span>
+              <span className="text-white/60 tabular-nums">12 Stories · 42 Units</span>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-              {/* Left 5 Cols: Interactive Exterior Elevation Facade */}
-              <div className="lg:col-span-5 flex flex-col rounded-xl bg-brand-navy border border-white/10 overflow-hidden">
-                <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between text-xs">
-                  <span className="font-bold text-white flex items-center gap-2">
-                    <Building2 size={15} className="text-brand-gold-lt" />
-                    <span>Exterior Elevation Selector</span>
-                  </span>
-                  <span className="text-white/60 tabular-nums">12 Stories · 42 Units</span>
-                </div>
+            <div className="relative flex-1 min-h-[440px] bg-brand-navy-deep overflow-hidden select-none">
+              <img
+                src={customAssets.exteriorUrl}
+                alt={`${projectName} Exterior Elevation`}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-brand-navy-deep/90 via-brand-navy-deep/20 to-brand-navy-deep/50" />
 
-                <div className="relative flex-1 min-h-[440px] bg-brand-navy-deep overflow-hidden select-none">
-                  <img
-                    src={customAssets.exteriorUrl}
-                    alt={`${projectName} Exterior Elevation`}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-brand-navy-deep/90 via-brand-navy-deep/20 to-brand-navy-deep/50" />
+              {/* Interactive Horizontal Floor Bands Overlay */}
+              <div className="absolute inset-x-6 inset-y-0">
+                {TOWER_FLOORS.map((f) => {
+                  const isSelected = f.floor === selectedFloorNum;
+                  const isHovered = f.floor === hoveredFloorNum;
+                  const isActive = isSelected || isHovered;
+                  const isSoldOut = f.availableUnits === 0;
 
-                  {/* Interactive Horizontal Floor Bands Overlay */}
-                  <div className="absolute inset-x-6 inset-y-0">
-                    {TOWER_FLOORS.map((f) => {
-                      const isSelected = f.floor === selectedFloorNum;
-                      const isHovered = f.floor === hoveredFloorNum;
-                      const isActive = isSelected || isHovered;
-                      const isSoldOut = f.availableUnits === 0;
-
-                      return (
-                        <button
-                          key={f.floor}
-                          type="button"
-                          onClick={() => handleSelectFloor(f)}
-                          onMouseEnter={() => setHoveredFloorNum(f.floor)}
-                          onMouseLeave={() => setHoveredFloorNum(null)}
-                          style={{
-                            top: `${f.bandTopPct}%`,
-                            height: `${f.bandHeightPct}%`,
-                          }}
-                          className={`group absolute left-0 right-0 rounded-md transition-all duration-150 flex items-center justify-between px-3 cursor-pointer ${
-                            isActive
-                              ? 'bg-brand-gold/55 border border-white shadow-md'
-                              : 'bg-brand-navy/20 hover:bg-brand-gold/35 border border-white/15'
-                          }`}
-                          aria-label={`Select Floor ${f.floor}`}
-                        >
-                          <span className="text-[11px] font-mono font-bold text-white drop-shadow tabular-nums">
-                            F{String(f.floor).padStart(2, '0')}
-                          </span>
-                          <span className="text-[11px] font-semibold text-white drop-shadow tabular-nums">
-                            {isSoldOut
-                              ? 'Fully Reserved'
-                              : `${f.availableUnits} of ${f.totalUnits} Open · $${(
-                                  f.startingPriceUsd / 1000
-                                ).toFixed(0)}k`}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Bottom Active Floor Callout Bar */}
-                  <div className="absolute bottom-3 inset-x-3 rounded-xl bg-brand-navy-deep/95 backdrop-blur-md border border-white/15 p-3.5 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-bold text-white">
-                        {activeFloor.label}
-                      </p>
-                      <p className="text-[11px] text-white/65 mt-0.5 tabular-nums">
-                        Elevation +{activeFloor.elevationMeters}m · {activeFloor.availableUnits} Available ·{' '}
-                        {activeFloor.reservedUnits} Reserved · {activeFloor.soldUnits} Sold
-                      </p>
-                    </div>
-                    <span className="text-xs font-mono font-bold text-brand-gold-lt tabular-nums shrink-0">
-                      ${activeFloor.startingPriceUsd.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right 7 Cols: Interactive X-Ray Split Curtain + Room Pins */}
-              <div className="lg:col-span-7 flex flex-col rounded-xl bg-brand-navy border border-white/10 overflow-hidden">
-                {/* Typology Selector Bar */}
-                <div className="px-4 py-3 border-b border-white/10 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-1.5">
-                    {(Object.values(UNIT_TYPOLOGIES) as UnitTypology[]).map((typ) => {
-                      const active = typ.id === selectedTypologyId;
-                      return (
-                        <button
-                          key={typ.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedTypologyId(typ.id);
-                            setSelectedRoomId(typ.rooms[0].id);
-                          }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap cursor-pointer ${
-                            active
-                              ? 'bg-brand-gold text-white'
-                              : 'bg-white/5 text-white/70 hover:text-white'
-                          }`}
-                        >
-                          {typ.id === 'type-a'
-                            ? 'Type A · 210 m²'
-                            : typ.id === 'type-b'
-                            ? 'Type B · 165 m²'
-                            : 'Penthouse · 320 m²'}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex items-center gap-3 text-xs text-white/70">
+                  return (
                     <button
+                      key={f.floor}
                       type="button"
-                      onClick={() => setShowDimensionPins((v) => !v)}
-                      className="hover:text-white transition-colors cursor-pointer inline-flex items-center gap-1.5"
-                    >
-                      <Eye size={14} className="text-brand-gold-lt" />
-                      <span>{showDimensionPins ? 'Hide Room Pins' : 'Show Room Pins'}</span>
-                    </button>
-                    <span aria-hidden="true">·</span>
-                    <span className="font-mono tabular-nums">X-Ray: {splitPct}% CAD</span>
-                  </div>
-                </div>
-
-                {/* Interactive Split-Curtain Canvas */}
-                <div
-                  ref={splitContainerRef}
-                  onMouseDown={(e) => {
-                    setIsDraggingSplit(true);
-                    updateSplitFromClientX(e.clientX);
-                  }}
-                  onTouchStart={(e) => {
-                    setIsDraggingSplit(true);
-                    if (e.touches[0]) updateSplitFromClientX(e.touches[0].clientX);
-                  }}
-                  className="relative flex-1 min-h-[400px] bg-neutral-900 overflow-hidden select-none cursor-ew-resize"
-                >
-                  {/* Base Layer: Furnished 3D Floor Plan */}
-                  <img
-                    src={customAssets.furnishedPlanUrl}
-                    alt={`${activeTypology.name} Furnished 3D Floor Plan`}
-                    referrerPolicy="no-referrer"
-                    draggable={false}
-                    className="w-full h-full object-contain bg-neutral-100"
-                  />
-
-                  {/* Top Clipped Layer: Technical CAD Blueprint */}
-                  <motion.div
-                    style={{ clipPath: clipPathRight }}
-                    className="absolute inset-0 pointer-events-none"
-                  >
-                    <img
-                      src={customAssets.technicalPlanUrl}
-                      alt={`${activeTypology.name} Technical CAD Floor Plan`}
-                      referrerPolicy="no-referrer"
-                      draggable={false}
-                      className="w-full h-full object-contain bg-white"
-                    />
-                  </motion.div>
-
-                  {/* Corner Layer Labels */}
-                  <div className="absolute top-3 left-3 pointer-events-none px-2.5 py-1 rounded-md bg-brand-navy-deep/85 text-[11px] font-bold text-white border border-white/15">
-                    Technical CAD Blueprint (2D Dimensions)
-                  </div>
-                  <div className="absolute top-3 right-3 pointer-events-none px-2.5 py-1 rounded-md bg-brand-navy-deep/85 text-[11px] font-bold text-white border border-white/15">
-                    Furnished Apartment Plan (3D Layout)
-                  </div>
-
-                  {/* Interactive Room Pins */}
-                  {showDimensionPins &&
-                    activeTypology.rooms.map((room) => {
-                      const isRoomSelected = room.id === activeRoom.id;
-                      return (
-                        <button
-                          key={room.id}
-                          type="button"
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedRoomId(room.id);
-                          }}
-                          style={{ left: `${room.xPct}%`, top: `${room.yPct}%` }}
-                          className={`-translate-x-1/2 -translate-y-1/2 absolute z-20 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-transform duration-150 cursor-pointer flex items-center gap-1.5 shadow-md ${
-                            isRoomSelected
-                              ? 'bg-brand-gold text-white scale-110 ring-2 ring-white'
-                              : 'bg-brand-navy-deep/90 text-white hover:scale-105 border border-white/25'
-                          }`}
-                        >
-                          <span>{room.nameEn.split(' ')[0]}</span>
-                          <span className="font-mono text-[10px] opacity-85 tabular-nums">
-                            {room.areaSqm}m²
-                          </span>
-                        </button>
-                      );
-                    })}
-
-                  {/* Draggable Vertical Curtain Divider Handle */}
-                  <motion.div
-                    style={{ left: splitHandleLeft }}
-                    className="absolute inset-y-0 z-30 -translate-x-1/2 w-0.5 bg-brand-gold pointer-events-none flex items-center justify-center"
-                  >
-                    <div className="w-9 h-9 rounded-full bg-brand-gold text-white shadow-lg border-2 border-white flex items-center justify-center">
-                      <MoveHorizontal size={16} />
-                    </div>
-                  </motion.div>
-                </div>
-
-                {/* Selected Room Architectural Specification Strip */}
-                <div className="p-4 bg-brand-navy-deep/90 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <span className="font-bold text-white">{activeRoom.nameEn}</span>
-                      <span aria-hidden="true" className="text-white/40">·</span>
-                      <span className="font-arabic text-brand-gold-lt">{activeRoom.nameFa}</span>
-                      <span aria-hidden="true" className="text-white/40">·</span>
-                      <span className="font-mono text-white/80 tabular-nums">
-                        {activeRoom.dimensions} ({activeRoom.areaSqm} m²)
-                      </span>
-                    </div>
-                    <p className="text-xs text-white/65 mt-1">
-                      {activeRoom.finishSpec} · {activeRoom.structuralNote}
-                    </p>
-                  </div>
-                  <div className="text-xs text-white/70 shrink-0 font-mono tabular-nums">
-                    Orientation: {activeRoom.orientation}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {activeVariant === 'variant-2' && (
-          <motion.div
-            key="variant-2"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="p-5 sm:p-8"
-          >
-            {/* Variant 02 Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-              <div>
-                <p className="text-xs font-semibold text-brand-gold-lt">
-                  02. 3D Isometric Floor Plate Stack & Spotlight Room Matrix
-                </p>
-                <h3 className="text-xl font-bold text-white mt-1">
-                  Inspect exploded 3D floor plates in perspective space and explore room-by-room architectural specifications
-                </h3>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1 bg-brand-navy p-1 rounded-xl border border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setIsoViewMode('3d-stack')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                      isoViewMode === '3d-stack'
-                        ? 'bg-brand-gold text-white'
-                        : 'text-white/70 hover:text-white'
-                    }`}
-                  >
-                    3D Isometric Stack
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsoViewMode('2d-plate')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                      isoViewMode === '2d-plate'
-                        ? 'bg-brand-gold text-white'
-                        : 'text-white/70 hover:text-white'
-                    }`}
-                  >
-                    Orthographic Top Plate
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-1 bg-brand-navy p-1 rounded-xl border border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setIsoPlanLayer('furnished')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                      isoPlanLayer === 'furnished'
-                        ? 'bg-white text-brand-navy'
-                        : 'text-white/70 hover:text-white'
-                    }`}
-                  >
-                    Furnished 3D Texture
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsoPlanLayer('technical')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                      isoPlanLayer === 'technical'
-                        ? 'bg-white text-brand-navy'
-                        : 'text-white/70 hover:text-white'
-                    }`}
-                  >
-                    Technical CAD Texture
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-              {/* Left 6 Cols: Interactive 3D Isometric Exploded Floor Plates */}
-              <div className="lg:col-span-6 rounded-xl bg-brand-navy border border-white/10 p-5 flex flex-col justify-between min-h-[480px] relative overflow-hidden">
-                <div className="flex items-center justify-between gap-2 z-10">
-                  <div>
-                    <p className="text-xs font-bold text-white">
-                      {isoViewMode === '3d-stack'
-                        ? 'Interactive 3D Exploded Floor Stack'
-                        : `Level ${lockedFloor.floor} Orthographic Floor Plate`}
-                    </p>
-                    <p className="text-[11px] text-white/60">
-                      Click any story plate or use the vertical floor rail to isolate a floor
-                    </p>
-                  </div>
-
-                  {isoViewMode === '3d-stack' && (
-                    <div className="flex items-center gap-2 text-xs text-white/75">
-                      <span>Plate Separation</span>
-                      <input
-                        type="range"
-                        min={14}
-                        max={34}
-                        value={isoSpread}
-                        onChange={(e) => setIsoSpread(Number(e.target.value))}
-                        className="w-20 accent-brand-gold cursor-pointer"
-                        aria-label="3D Floor Plate Separation"
-                      />
-                    </div>
-                  )}
-                </div>
-
-                {/* Center 3D Isometric Stage */}
-                <div className="flex-1 flex items-center justify-center my-4 relative">
-                  {isoViewMode === '3d-stack' ? (
-                    <div
-                      className="relative w-full max-w-[380px] h-[340px] flex items-center justify-center"
-                      style={{ perspective: '1200px' }}
-                    >
-                      {[12, 10, 8, 6, 4, 2].map((floorNum, idx) => {
-                        const floorObj =
-                          TOWER_FLOORS.find((f) => f.floor === floorNum) || TOWER_FLOORS[0];
-                        const isSelected = selectedFloorNum === floorNum;
-                        const isAboveSelected = floorNum > selectedFloorNum;
-                        const verticalOffset =
-                          (idx - 2.5) * isoSpread + (isAboveSelected ? -26 : 0);
-
-                        return (
-                          <motion.button
-                            key={floorNum}
-                            type="button"
-                            onClick={() => handleSelectFloor(floorObj)}
-                            initial={false}
-                            animate={{
-                              y: verticalOffset,
-                              scale: isSelected ? 1.06 : 0.92,
-                              opacity: isAboveSelected ? 0.38 : isSelected ? 1 : 0.78,
-                            }}
-                            transition={{ type: 'spring', stiffness: 260, damping: 24 }}
-                            style={{
-                              transformStyle: 'preserve-3d',
-                              rotateX: 54,
-                              rotateZ: -28,
-                              zIndex: 20 - idx,
-                            }}
-                            className={`w-64 h-44 rounded-xl overflow-hidden border-2 transition-colors cursor-pointer shadow-2xl ${
-                              isSelected
-                                ? 'border-brand-gold ring-4 ring-brand-gold/30'
-                                : 'border-white/30 hover:border-white/70'
-                            }`}
-                          >
-                            <img
-                              src={
-                                isoPlanLayer === 'furnished'
-                                  ? customAssets.furnishedPlanUrl
-                                  : customAssets.technicalPlanUrl
-                              }
-                              alt={`Floor ${floorNum} Plate`}
-                              referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-brand-navy/25 flex items-end justify-between p-2.5">
-                              <span className="px-2 py-0.5 rounded bg-brand-navy-deep/90 text-[11px] font-mono font-bold text-white tabular-nums">
-                                Level {String(floorNum).padStart(2, '0')}
-                              </span>
-                              <span className="px-2 py-0.5 rounded bg-brand-gold text-[10px] font-bold text-white tabular-nums">
-                                {floorObj.availableUnits} Open
-                              </span>
-                            </div>
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.96 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="w-full h-[330px] rounded-xl overflow-hidden bg-white border border-white/15 relative"
-                    >
-                      <img
-                        src={
-                          isoPlanLayer === 'furnished'
-                            ? customAssets.furnishedPlanUrl
-                            : customAssets.technicalPlanUrl
-                        }
-                        alt="Selected Orthographic Plate"
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-contain"
-                      />
-                    </motion.div>
-                  )}
-                </div>
-
-                {/* Bottom Quick Floor Selector Strip */}
-                <div className="flex items-center justify-between gap-1.5 pt-3 border-t border-white/10 overflow-x-auto">
-                  {TOWER_FLOORS.map((f) => {
-                    const active = f.floor === selectedFloorNum;
-                    return (
-                      <button
-                        key={f.floor}
-                        type="button"
-                        onClick={() => handleSelectFloor(f)}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-colors cursor-pointer shrink-0 tabular-nums ${
-                          active
-                            ? 'bg-brand-gold text-white'
-                            : 'bg-white/5 text-white/65 hover:text-white hover:bg-white/10'
-                        }`}
-                      >
-                        F{String(f.floor).padStart(2, '0')}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Right 6 Cols: 21st.dev Spotlight Room Bento Grid */}
-              <div
-                onMouseMove={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  setSpotlightPos({
-                    x: e.clientX - rect.left,
-                    y: e.clientY - rect.top,
-                  });
-                }}
-                className="lg:col-span-6 rounded-xl bg-brand-navy border border-white/10 p-5 flex flex-col justify-between relative overflow-hidden"
-                style={{
-                  backgroundImage: `radial-gradient(380px circle at ${spotlightPos.x}px ${spotlightPos.y}px, rgba(1, 69, 242, 0.16), transparent 80%)`,
-                }}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                  <div>
-                    <p className="text-xs font-bold text-white">
-                      {activeTypology.code} — {activeTypology.name}
-                    </p>
-                    <p className="text-xs font-arabic text-brand-gold-lt mt-0.5">
-                      {activeTypology.nameFa} · سقف {activeTypology.ceilingHeightM} متر
-                    </p>
-                  </div>
-                  <span className="text-xs font-mono text-white/75 tabular-nums">
-                    Total {activeTypology.totalAreaSqm} m²
-                  </span>
-                </div>
-
-                {/* Room Bento Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-auto">
-                  {activeTypology.rooms.map((room, index) => {
-                    const isSelected = room.id === activeRoom.id;
-                    const pctOfTotal = Math.round(
-                      (room.areaSqm / activeTypology.totalAreaSqm) * 100
-                    );
-                    return (
-                      <motion.button
-                        key={room.id}
-                        type="button"
-                        whileHover={{ y: -2 }}
-                        transition={{ duration: 0.15 }}
-                        onClick={() => setSelectedRoomId(room.id)}
-                        className={`text-left p-3.5 rounded-xl border transition-colors cursor-pointer flex flex-col justify-between ${
-                          index === 0 ? 'sm:col-span-2' : ''
-                        } ${
-                          isSelected
-                            ? 'bg-brand-gold/20 border-brand-gold text-white'
-                            : 'bg-brand-navy-deep/80 border-white/10 text-white/85 hover:border-white/30'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="text-xs font-bold text-white">{room.nameEn}</p>
-                            <p className="text-[11px] font-arabic text-white/65 mt-0.5">
-                              {room.nameFa}
-                            </p>
-                          </div>
-                          <span className="text-sm font-mono font-bold text-brand-gold-lt tabular-nums shrink-0">
-                            {room.areaSqm} m²
-                          </span>
-                        </div>
-
-                        <div className="mt-3">
-                          <div className="flex items-center justify-between text-[11px] text-white/60 font-mono tabular-nums mb-1">
-                            <span>{room.dimensions}</span>
-                            <span>{pctOfTotal}% of floorplate</span>
-                          </div>
-                          <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${Math.min(100, pctOfTotal * 2)}%` }}
-                              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                              className="h-full bg-brand-gold rounded-full"
-                            />
-                          </div>
-                        </div>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-
-                {/* Selected Room Structural & Finish Footer */}
-                <div className="mt-4 pt-3.5 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-white/75">
-                  <span>
-                    <strong className="text-white">{activeRoom.nameEn}:</strong> {activeRoom.finishSpec}
-                  </span>
-                  <span className="font-mono text-brand-gold-lt tabular-nums shrink-0">
-                    {activeRoom.orientation}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {activeVariant === 'variant-3' && (
-          <motion.div
-            key="variant-3"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="p-5 sm:p-8"
-          >
-            {/* Variant 03 Header */}
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
-              <div>
-                <p className="text-xs font-semibold text-brand-gold-lt">
-                  03. Architectural CAD Blueprint Workbench, Solar Orientation & Payment Studio
-                </p>
-                <h3 className="text-xl font-bold text-white mt-1">
-                  Inspect side-by-side Technical CAD and Furnished plans with zoom, Kabul sun-path simulation, and installment planning
-                </h3>
-              </div>
-
-              {/* Workbench View Mode Switcher + Zoom Controls */}
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1 bg-brand-navy p-1 rounded-xl border border-white/10">
-                  {(
-                    [
-                      ['side-by-side', 'Side-by-Side Sync'],
-                      ['technical', 'Technical CAD Only'],
-                      ['furnished', 'Furnished 3D Only'],
-                    ] as const
-                  ).map(([modeKey, label]) => (
-                    <button
-                      key={modeKey}
-                      type="button"
-                      onClick={() => setWorkbenchMode(modeKey)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                        workbenchMode === modeKey
-                          ? 'bg-brand-gold text-white'
-                          : 'text-white/70 hover:text-white'
+                      onClick={() => handleSelectFloor(f)}
+                      onMouseEnter={() => setHoveredFloorNum(f.floor)}
+                      onMouseLeave={() => setHoveredFloorNum(null)}
+                      style={{
+                        top: `${f.bandTopPct}%`,
+                        height: `${f.bandHeightPct}%`,
+                      }}
+                      className={`group absolute left-0 right-0 rounded-md transition-all duration-150 flex items-center justify-between px-3 cursor-pointer ${
+                        isActive
+                          ? 'bg-brand-gold/55 border border-white shadow-md'
+                          : 'bg-brand-navy/20 hover:bg-brand-gold/35 border border-white/15'
                       }`}
+                      aria-label={`Select Floor ${f.floor}`}
                     >
-                      {label}
+                      <span className="text-[11px] font-mono font-bold text-white drop-shadow tabular-nums">
+                        F{String(f.floor).padStart(2, '0')}
+                      </span>
+                      <span className="text-[11px] font-semibold text-white drop-shadow tabular-nums">
+                        {isSoldOut
+                          ? 'Fully Reserved'
+                          : `${f.availableUnits} of ${f.totalUnits} Open · $${(
+                              f.startingPriceUsd / 1000
+                            ).toFixed(0)}k`}
+                      </span>
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
+              </div>
 
-                <div className="flex items-center gap-1 bg-brand-navy p-1 rounded-xl border border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => setZoomScale((z) => Math.max(1, Number((z - 0.25).toFixed(2))))}
-                    className="p-1.5 rounded-lg text-white/75 hover:text-white hover:bg-white/10 cursor-pointer"
-                    aria-label="Zoom Out"
-                  >
-                    <ZoomOut size={15} />
-                  </button>
-                  <span className="px-2 text-xs font-mono font-bold text-white tabular-nums">
-                    {Math.round(zoomScale * 100)}%
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setZoomScale((z) => Math.min(2.25, Number((z + 0.25).toFixed(2))))}
-                    className="p-1.5 rounded-lg text-white/75 hover:text-white hover:bg-white/10 cursor-pointer"
-                    aria-label="Zoom In"
-                  >
-                    <ZoomIn size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setZoomScale(1)}
-                    className="px-2 py-1 rounded-lg text-[11px] text-white/65 hover:text-white cursor-pointer"
-                  >
-                    Reset
-                  </button>
+              {/* Bottom Active Floor Callout Bar */}
+              <div className="absolute bottom-3 inset-x-3 rounded-xl bg-brand-navy-deep/95 backdrop-blur-md border border-white/15 p-3.5 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold text-white">{activeFloor.label}</p>
+                  <p className="text-[11px] text-white/65 mt-0.5 tabular-nums">
+                    Elevation +{activeFloor.elevationMeters}m · {activeFloor.availableUnits} Available ·{' '}
+                    {activeFloor.reservedUnits} Reserved · {activeFloor.soldUnits} Sold
+                  </p>
                 </div>
+                <span className="text-xs font-mono font-bold text-brand-gold-lt tabular-nums shrink-0">
+                  ${activeFloor.startingPriceUsd.toLocaleString()}
+                </span>
               </div>
             </div>
+          </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-              {/* Left 8 Cols: Synchronized CAD / Furnished Workbench Stage + Solar Scrubber */}
-              <div className="lg:col-span-8 flex flex-col rounded-xl bg-brand-navy border border-white/10 overflow-hidden">
-                {/* Solar Path & Compass Toolbar */}
-                <div className="px-4 py-3 border-b border-white/10 flex flex-wrap items-center justify-between gap-4 bg-brand-navy-deep/60">
-                  <div className="flex items-center gap-2 text-xs">
-                    <Sun size={15} className="text-amber-400 shrink-0" />
-                    <span className="font-bold text-white">Kabul Sun-Path Daylight Scrubber:</span>
-                    <span className="font-mono text-brand-gold-lt tabular-nums">
-                      {solarTimeFormatted} ({solarAzimuthDeg}° Azimuth)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 flex-1 max-w-xs">
-                    <span className="text-[11px] text-white/55 font-mono">07:00 E</span>
-                    <input
-                      type="range"
-                      min={7}
-                      max={18.5}
-                      step={0.5}
-                      value={solarHour}
-                      onChange={(e) => setSolarHour(Number(e.target.value))}
-                      className="flex-1 accent-brand-gold cursor-pointer"
-                      aria-label="Kabul Solar Daylight Time"
-                    />
-                    <span className="text-[11px] text-white/55 font-mono">18:30 W</span>
-                  </div>
-                </div>
-
-                {/* Dual or Single Plan Viewport */}
-                <div
-                  className={`relative flex-1 min-h-[390px] grid ${
-                    workbenchMode === 'side-by-side' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'
-                  } divide-y md:divide-y-0 md:divide-x divide-white/10 bg-neutral-900 overflow-hidden`}
-                >
-                  {(workbenchMode === 'technical' || workbenchMode === 'side-by-side') && (
-                    <div className="relative overflow-auto flex items-center justify-center bg-white p-3">
-                      <motion.img
-                        src={customAssets.technicalPlanUrl}
-                        alt="Technical CAD Blueprint"
-                        referrerPolicy="no-referrer"
-                        animate={{ scale: zoomScale }}
-                        transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-                        className="max-h-[360px] w-auto object-contain origin-center"
-                      />
-                      <span className="absolute top-3 left-3 px-2.5 py-1 rounded bg-brand-navy text-white text-[11px] font-bold">
-                        Technical CAD Plan · 1:100
-                      </span>
-                    </div>
-                  )}
-
-                  {(workbenchMode === 'furnished' || workbenchMode === 'side-by-side') && (
-                    <div className="relative overflow-auto flex items-center justify-center bg-neutral-100 p-3">
-                      <motion.img
-                        src={customAssets.furnishedPlanUrl}
-                        alt="Furnished 3D Floor Plan"
-                        referrerPolicy="no-referrer"
-                        animate={{ scale: zoomScale }}
-                        transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-                        className="max-h-[360px] w-auto object-contain origin-center"
-                      />
-                      {/* Dynamic Solar Sunlight Overlay */}
-                      <div
-                        className="absolute inset-0 pointer-events-none transition-opacity duration-200"
-                        style={{
-                          background: `linear-gradient(${solarAzimuthDeg}deg, rgba(251, 191, 36, 0.22) 0%, rgba(251, 191, 36, 0.04) 55%, rgba(2, 14, 58, 0.18) 100%)`,
-                        }}
-                      />
-                      <span className="absolute top-3 left-3 px-2.5 py-1 rounded bg-brand-navy text-white text-[11px] font-bold">
-                        Furnished 3D Layout · Daylight {solarTimeFormatted}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Room Selector Pills */}
-                <div className="px-4 py-3 bg-brand-navy-deep/90 border-t border-white/10 flex items-center gap-2 overflow-x-auto">
-                  <span className="text-xs text-white/55 shrink-0 flex items-center gap-1">
-                    <Grid size={13} />
-                    <span>Inspect Room:</span>
-                  </span>
-                  {activeTypology.rooms.map((r) => (
+          {/* Right 7 Cols: Interactive 50/50 X-Ray Split Curtain + Room Pins */}
+          <div className="lg:col-span-7 flex flex-col rounded-xl bg-brand-navy border border-white/10 overflow-hidden">
+            {/* Typology Selector Bar */}
+            <div className="px-4 py-3 border-b border-white/10 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5">
+                {(Object.values(UNIT_TYPOLOGIES) as UnitTypology[]).map((typ) => {
+                  const active = typ.id === selectedTypologyId;
+                  return (
                     <button
-                      key={r.id}
+                      key={typ.id}
                       type="button"
-                      onClick={() => setSelectedRoomId(r.id)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap shrink-0 cursor-pointer tabular-nums ${
-                        r.id === activeRoom.id
+                      onClick={() => {
+                        setSelectedTypologyId(typ.id);
+                        setSelectedRoomId(typ.rooms[0].id);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap cursor-pointer ${
+                        active
                           ? 'bg-brand-gold text-white'
                           : 'bg-white/5 text-white/70 hover:text-white'
                       }`}
                     >
-                      {r.nameEn.split(' ')[0]} ({r.areaSqm} m²)
+                      {typ.id === 'type-a'
+                        ? 'Type A · 210 m²'
+                        : typ.id === 'type-b'
+                        ? 'Type B · 165 m²'
+                        : 'Penthouse · 320 m²'}
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
 
-              {/* Right 4 Cols: Unit Typology & Construction Installment Configurator */}
-              <div className="lg:col-span-4 rounded-xl bg-brand-navy border border-white/10 p-5 flex flex-col justify-between gap-5">
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className="text-xs font-bold text-brand-gold-lt flex items-center gap-1.5">
-                      <Calculator size={14} />
-                      <span>Unit & Payment Configurator</span>
-                    </span>
-                    <span className="text-xs font-mono text-white/65 tabular-nums">
-                      ${pricePerSqm.toLocaleString()} / m²
-                    </span>
-                  </div>
-
-                  {/* Typology Selector */}
-                  <div className="grid grid-cols-3 gap-1.5 mb-4">
-                    {(Object.values(UNIT_TYPOLOGIES) as UnitTypology[]).map((t) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => setSelectedTypologyId(t.id)}
-                        className={`py-2 px-2 rounded-lg text-xs font-bold border transition-colors cursor-pointer text-center ${
-                          selectedTypologyId === t.id
-                            ? 'bg-brand-gold border-brand-gold text-white'
-                            : 'bg-brand-navy-deep border-white/10 text-white/70 hover:text-white'
-                        }`}
-                      >
-                        <div>{t.id === 'penthouse' ? 'Penthouse' : t.id.toUpperCase()}</div>
-                        <div className="font-mono text-[11px] opacity-80 tabular-nums">
-                          {t.totalAreaSqm} m²
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Down Payment Slider */}
-                  <div className="space-y-3 bg-brand-navy-deep/80 rounded-xl p-4 border border-white/10">
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-white/70">Down Payment ({downPaymentPct}%)</span>
-                        <span className="font-mono font-bold text-white tabular-nums">
-                          ${downPaymentUsd.toLocaleString()}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min={20}
-                        max={70}
-                        step={5}
-                        value={downPaymentPct}
-                        onChange={(e) => setDownPaymentPct(Number(e.target.value))}
-                        className="w-full accent-brand-gold cursor-pointer"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="text-white/70">Installment Term</span>
-                        <span className="font-mono font-bold text-white tabular-nums">
-                          {installmentMonths} Months (0% Interest)
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min={12}
-                        max={36}
-                        step={6}
-                        value={installmentMonths}
-                        onChange={(e) => setInstallmentMonths(Number(e.target.value))}
-                        className="w-full accent-brand-gold cursor-pointer"
-                      />
-                    </div>
-
-                    <div className="pt-3 border-t border-white/10 flex items-baseline justify-between">
-                      <span className="text-xs text-white/70">Estimated Monthly</span>
-                      <span className="text-xl font-mono font-extrabold text-brand-gold-lt tabular-nums">
-                        ${monthlyPaymentUsd.toLocaleString()} / mo
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Spec Summary & Primary CTA */}
-                <div className="space-y-3">
-                  <div className="text-xs text-white/70 space-y-1 font-mono tabular-nums">
-                    <div className="flex justify-between">
-                      <span>Gross Internal Area:</span>
-                      <span className="text-white font-bold">{activeTypology.totalAreaSqm} m²</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Terrace / Balcony Area:</span>
-                      <span className="text-white font-bold">{activeTypology.balconyAreaSqm} m²</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Formal Mehmankhana:</span>
-                      <span className="text-emerald-400 font-bold">Included (Separate Entry)</span>
-                    </div>
-                  </div>
-
-                  {onRequestVisit && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onRequestVisit(
-                          `${projectName} — Floor ${lockedFloor.floor} (${activeTypology.name} · ${activeTypology.totalAreaSqm}m²)`
-                        )
-                      }
-                      className="w-full py-3 px-4 rounded-xl bg-brand-gold hover:bg-brand-gold-dark text-white text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      <Compass size={15} />
-                      <span>Request Floor Plan PDF & Private Viewing</span>
-                    </button>
-                  )}
-                </div>
+              <div className="flex items-center gap-3 text-xs text-white/70">
+                <button
+                  type="button"
+                  onClick={() => setShowDimensionPins((v) => !v)}
+                  className="hover:text-white transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <Eye size={14} className="text-brand-gold-lt" />
+                  <span>{showDimensionPins ? 'Hide Room Pins' : 'Show Room Pins'}</span>
+                </button>
+                <span aria-hidden="true">·</span>
+                <span className="font-mono tabular-nums">50/50 X-Ray Split: {splitPct}%</span>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+            {/* Interactive Split-Curtain Canvas */}
+            <div
+              ref={splitContainerRef}
+              onMouseDown={(e) => {
+                setIsDraggingSplit(true);
+                updateSplitFromClientX(e.clientX);
+              }}
+              onTouchStart={(e) => {
+                setIsDraggingSplit(true);
+                if (e.touches[0]) updateSplitFromClientX(e.touches[0].clientX);
+              }}
+              className="relative flex-1 min-h-[400px] bg-neutral-900 overflow-hidden select-none cursor-ew-resize"
+            >
+              {/* Base Layer */}
+              <img
+                src={customAssets.furnishedPlanUrl}
+                alt={`${activeTypology.name} Spatial Layout`}
+                referrerPolicy="no-referrer"
+                draggable={false}
+                className="w-full h-full object-contain bg-neutral-100"
+              />
+
+              {/* Top Clipped Layer */}
+              <motion.div
+                style={{ clipPath: clipPathRight }}
+                className="absolute inset-0 pointer-events-none"
+              >
+                <img
+                  src={customAssets.technicalPlanUrl}
+                  alt={`${activeTypology.name} Structural Dimensions`}
+                  referrerPolicy="no-referrer"
+                  draggable={false}
+                  className="w-full h-full object-contain bg-white"
+                />
+              </motion.div>
+
+              {/* Corner Layer Badge */}
+              <div className="absolute top-3 left-3 pointer-events-none px-2.5 py-1 rounded-md bg-brand-navy-deep/85 text-[11px] font-bold text-white border border-white/15">
+                50/50 X-Ray Split View
+              </div>
+
+              {/* Interactive Room Pins */}
+              {showDimensionPins &&
+                activeTypology.rooms.map((room) => {
+                  const isRoomSelected = room.id === activeRoom.id;
+                  return (
+                    <button
+                      key={room.id}
+                      type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedRoomId(room.id);
+                      }}
+                      style={{ left: `${room.xPct}%`, top: `${room.yPct}%` }}
+                      className={`-translate-x-1/2 -translate-y-1/2 absolute z-20 px-2.5 py-1 rounded-lg text-[11px] font-bold transition-transform duration-150 cursor-pointer flex items-center gap-1.5 shadow-md ${
+                        isRoomSelected
+                          ? 'bg-brand-gold text-white scale-110 ring-2 ring-white'
+                          : 'bg-brand-navy-deep/90 text-white hover:scale-105 border border-white/25'
+                      }`}
+                    >
+                      <span>{room.nameEn.split(' ')[0]}</span>
+                      <span className="font-mono text-[10px] opacity-85 tabular-nums">
+                        {room.areaSqm}m²
+                      </span>
+                    </button>
+                  );
+                })}
+
+              {/* Draggable Vertical Curtain Divider Handle */}
+              <motion.div
+                style={{ left: splitHandleLeft }}
+                className="absolute inset-y-0 z-30 -translate-x-1/2 w-0.5 bg-brand-gold pointer-events-none flex items-center justify-center"
+              >
+                <div className="w-9 h-9 rounded-full bg-brand-gold text-white shadow-lg border-2 border-white flex items-center justify-center">
+                  <MoveHorizontal size={16} />
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Selected Room Architectural Specification Strip */}
+            <div className="p-4 bg-brand-navy-deep/90 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="font-bold text-white">{activeRoom.nameEn}</span>
+                  <span aria-hidden="true" className="text-white/40">
+                    ·
+                  </span>
+                  <span className="font-arabic text-brand-gold-lt">{activeRoom.nameFa}</span>
+                  <span aria-hidden="true" className="text-white/40">
+                    ·
+                  </span>
+                  <span className="font-mono text-white/80 tabular-nums">
+                    {activeRoom.dimensions} ({activeRoom.areaSqm} m²)
+                  </span>
+                </div>
+                <p className="text-xs text-white/65 mt-1">
+                  {activeRoom.finishSpec} · {activeRoom.structuralNote}
+                </p>
+              </div>
+              <div className="text-xs text-white/70 shrink-0 font-mono tabular-nums">
+                Orientation: {activeRoom.orientation}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   );
 };

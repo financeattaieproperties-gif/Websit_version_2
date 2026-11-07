@@ -148,6 +148,12 @@ export const SEO_CONFIG = {
         '@type': 'City',
         name: 'Kabul',
       },
+      sameAs: [
+        'https://www.facebook.com/profile.php?id=61554275223244',
+        'https://www.facebook.com/attaiepropertiesofficialRahnomaonlineAttaie',
+        'https://www.youtube.com/@attaieproperties-buy-sell-Rent',
+        'https://www.youtube.com/@AttaieRealEstate',
+      ],
     };
   },
 };

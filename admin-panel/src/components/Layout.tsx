@@ -348,9 +348,14 @@ export default function Layout({ children }: { children: ReactNode }) {
     </>
   );
 
+  const panelTransitionStyle = {
+    animation: 'adminPanelEnter 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+  } as const;
+
   if (isMobile) {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <style>{`@keyframes adminPanelEnter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
         <FloatingGlobalAlert />
         <div style={S.topBar}>
           <button style={S.hamburger} onClick={() => setMenuOpen(o => !o)} aria-label="Toggle menu">
@@ -370,18 +375,27 @@ export default function Layout({ children }: { children: ReactNode }) {
           </>
         )}
 
-        <main style={{ flex: 1, padding: '1.25rem', overflowY: 'auto' }}>{children}</main>
+        <main style={{ flex: 1, padding: '1.25rem', overflowY: 'auto' }}>
+          <div key={location.pathname} style={panelTransitionStyle}>
+            {children}
+          </div>
+        </main>
       </div>
     );
   }
 
   return (
     <div style={S.shell}>
+      <style>{`@keyframes adminPanelEnter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
       <FloatingGlobalAlert />
       <nav style={S.sidebar}>
         <SidebarContent />
       </nav>
-      <main style={S.main}>{children}</main>
+      <main style={S.main}>
+        <div key={location.pathname} style={panelTransitionStyle}>
+          {children}
+        </div>
+      </main>
     </div>
   );
 }

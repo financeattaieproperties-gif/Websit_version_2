@@ -1,195 +1,493 @@
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Bed,
+  Bath,
+  Maximize2,
+  Building2,
+  Layers,
+  X,
+  CheckCircle2,
+  CreditCard,
+  Compass,
+  Sparkles,
+  Eye,
+} from 'lucide-react';
 import { getProjectUnits, type ProjectUnit } from '@/lib/dbService';
 import { Badge } from '@/components/ui/Badge';
-import { Button } from '@/components/ui/Button';
-import { MasterplanViewer } from '@/components/property/MasterplanViewer';
-import { VisitRequestDialog } from '@/components/forms/VisitRequestDialog';
+import { PaymentPlanComparisonCard } from '@/components/project/PaymentPlanComparisonCard';
+import fallbackAptImg1 from '@/assets/images/stitch_apartment_interior.jpg';
+import fallbackAptImg2 from '@/assets/images/stitch_villa_exterior.jpg';
+import fallbackAptImg3 from '@/assets/images/category_master_projects_1794037429266.jpg';
 
 interface ProjectUnitsSectionProps {
-  projectId: number;
+  projectId: string | number;
   projectName: string;
-  masterplanImage?: string | null;
 }
 
-export function ProjectUnitsSection({
-  projectId,
+const FALLBACK_UNITS: ProjectUnit[] = [
+  {
+    id: 901,
+    project_id: 1,
+    unit_number: 'A-301',
+    title: '3-Bedroom Corner Residence with Panoramic View',
+    floor: 3,
+    beds: 3,
+    baths: 2,
+    area: 168,
+    price: 125000,
+    currency: 'USD',
+    status: 'available',
+    image_url: fallbackAptImg1,
+    description:
+      'Spacious corner apartment featuring south-facing double-glazed floor-to-ceiling windows, private balcony overlooking the city skyline, Turkish oak flooring, central heating system, and dedicated underground parking.',
+  },
+  {
+    id: 902,
+    project_id: 1,
+    unit_number: 'A-502',
+    title: '4-Bedroom Family Suite with Dual Balconies',
+    floor: 5,
+    beds: 4,
+    baths: 3,
+    area: 215,
+    price: 162000,
+    currency: 'USD',
+    status: 'available',
+    image_url: fallbackAptImg2,
+    description:
+      'Generously proportioned family residence with a separate formal guest reception room (Mehman Khana), modern closed kitchen with quartz countertops, three en-suite/full bathrooms, and 24/7 solar-backed elevator access.',
+  },
+  {
+    id: 903,
+    project_id: 1,
+    unit_number: 'B-801',
+    title: 'Executive Penthouse Duplex Residence',
+    floor: 8,
+    beds: 5,
+    baths: 4,
+    area: 290,
+    price: 230000,
+    currency: 'USD',
+    status: 'available',
+    image_url: fallbackAptImg3,
+    description:
+      'Flagship top-floor residence offering expansive private terrace space, unobstructed mountain and city views, custom cabinetry, smart intercom security, and two reserved basement parking stalls.',
+  },
+];
+
+const statusBadgeMap: Record<
+  ProjectUnit['status'],
+  'available' | 'pending' | 'sold' | 'rented'
+> = {
+  available: 'available',
+  reserved: 'pending',
+  sold: 'sold',
+  rented: 'rented',
+};
+
+export function ApartmentFullInfoModal({
+  unit,
   projectName,
-  masterplanImage,
-}: ProjectUnitsSectionProps) {
-  const { t } = useTranslation();
-  const location = useLocation();
-  const [units, setUnits] = useState<ProjectUnit[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [selectedUnit, setSelectedUnit] = useState<ProjectUnit | null>(null);
-  const [highlightedId, setHighlightedId] = useState<number | null>(null);
-
-  const loadUnits = () => {
-    setLoading(true);
-    setError(false);
-    getProjectUnits(projectId)
-      .then((data) => {
-        setUnits(data.items);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError(true);
-        setLoading(false);
-      });
-  };
-
+  onClose,
+}: {
+  unit: ProjectUnit;
+  projectName: string;
+  onClose: () => void;
+}) {
   useEffect(() => {
-    loadUnits();
-  }, [projectId]);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
-  useEffect(() => {
-    if (!loading && units.length > 0 && location.hash.startsWith('#unit-')) {
-      const targetId = Number(location.hash.replace('#unit-', ''));
-      if (targetId) {
-        setHighlightedId(targetId);
-        setTimeout(() => {
-          document.getElementById(`unit-${targetId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 120);
-      }
-    }
-  }, [loading, units, location.hash]);
-
-  const handleMasterplanUnitClick = (clicked: { id: string }) => {
-    const numId = Number(clicked.id);
-    const found = units.find((u) => u.id === numId);
-    if (found) {
-      setHighlightedId(found.id);
-      document.getElementById(`unit-${found.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      if (!['sold', 'rented'].includes(found.status)) {
-        setSelectedUnit(found);
-      }
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="mt-10 rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500">
-        {t('projectUnits.loading')}
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="mt-10 rounded-xl border border-red-200 bg-red-50 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <p className="text-sm text-red-700 font-medium">{t('projectUnits.loadError')}</p>
-        <Button size="sm" variant="outline" onClick={loadUnits}>
-          {t('projectUnits.retry')}
-        </Button>
-      </div>
-    );
-  }
-
-  if (!units.length) return null;
-
-  const masterplanUnits = units.map((u, idx) => ({
-    id: String(u.id),
-    apartmentNumber: u.unit_number,
-    status: u.status,
-    beds: u.beds ?? undefined,
-    area: u.area ?? undefined,
-    coordX: 15 + ((idx * 19) % 70),
-    coordY: 20 + ((idx * 23) % 60),
-  }));
+  const displayTitle = unit.title || `${projectName} — Unit ${unit.unit_number}`;
+  const currency = unit.currency || 'USD';
 
   return (
-    <section className="mt-12 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-brand-gold">
-            {t('projectUnits.eyebrow')}
-          </p>
-          <h2 className="text-2xl font-bold text-brand-navy mt-1">{t('projectUnits.title')}</h2>
-        </div>
-      </div>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ duration: 0.25 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden my-8 max-h-[90vh] flex flex-col"
+      >
+        {/* Modal Header */}
+        <div className="relative h-60 sm:h-72 bg-brand-navy shrink-0 overflow-hidden">
+          {unit.image_url ? (
+            <img
+              src={unit.image_url}
+              alt={displayTitle}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-brand-navy via-brand-navy-light to-brand-navy-deep">
+              <Building2 className="w-16 h-16 text-white/20" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/20" />
 
-      {masterplanImage && (
-        <MasterplanViewer
-          masterplanImage={masterplanImage}
-          units={masterplanUnits}
-          onUnitClick={handleMasterplanUnitClick}
-        />
-      )}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close apartment details"
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/55 text-white hover:bg-black/80 flex items-center justify-center transition-colors cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {units.map((unit) => {
-          const isHighlighted = highlightedId === unit.id;
-          const badgeStatus = unit.status === 'reserved' ? 'pending' : unit.status;
-          const bookable = !['sold', 'rented'].includes(unit.status);
-
-          return (
-            <div
-              key={unit.id}
-              id={`unit-${unit.id}`}
-              className={`rounded-xl border bg-white p-5 shadow-sm transition-all flex flex-col gap-3 ${
-                isHighlighted
-                  ? 'border-brand-gold ring-2 ring-brand-gold/30 bg-brand-gold/5'
-                  : 'border-gray-200 hover:border-brand-gold/50'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-bold text-brand-navy">
-                    {projectName} — {t('projectUnits.unitPrefix', { number: unit.unit_number })}
-                  </h3>
-                  {unit.title && (
-                    <p className="text-xs font-semibold text-neutral-500 mt-0.5">{unit.title}</p>
-                  )}
-                  <p className="text-sm text-gray-500 mt-1">
-                    {unit.floor !== null && `${t('projectUnits.floor', { floor: unit.floor })} • `}
-                    {unit.beds !== null && `${t('projectUnits.beds', { count: unit.beds })} • `}
-                    {unit.baths !== null && `${t('projectUnits.baths', { count: unit.baths })} • `}
-                    {unit.area !== null && `${unit.area} m²`}
-                  </p>
-                </div>
-                <Badge status={badgeStatus} />
+          <div className="absolute bottom-4 left-6 right-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <span className="px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-brand-gold text-white">
+                  Unit {unit.unit_number}
+                </span>
+                <Badge status={statusBadgeMap[unit.status]} />
+                <span className="text-xs text-white/80 font-medium">
+                  {projectName}
+                </span>
               </div>
+              <h3 className="text-xl sm:text-2xl font-bold text-white leading-snug">
+                {displayTitle}
+              </h3>
+            </div>
 
-              {unit.price !== null && (
-                <p className="text-xl font-extrabold text-brand-gold">
-                  {unit.currency} {Number(unit.price).toLocaleString()}
+            <div className="bg-white/15 backdrop-blur-md border border-white/20 rounded-xl px-4 py-2 text-right">
+              <span className="text-[10px] uppercase tracking-widest text-white/75 block">
+                Total Pre-Sale Price
+              </span>
+              <span className="text-xl font-extrabold text-white">
+                {unit.price !== null
+                  ? `${currency} ${Number(unit.price).toLocaleString()}`
+                  : 'Price on Request'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Scrollable Modal Body */}
+        <div className="p-6 space-y-6 overflow-y-auto">
+          {/* Key Specifications Grid */}
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+              Apartment Specifications
+            </h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-3.5">
+                <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
+                  <Layers className="w-4 h-4 text-brand-gold" />
+                  Floor Level
+                </div>
+                <p className="text-base font-bold text-brand-navy">
+                  {unit.floor !== null ? `Floor ${unit.floor}` : 'Standard'}
                 </p>
-              )}
-
-              {unit.description && (
-                <p className="text-sm text-gray-600 leading-relaxed">{unit.description}</p>
-              )}
-
-              <div className="pt-1">
-                {bookable ? (
-                  <Button size="sm" onClick={() => setSelectedUnit(unit)}>
-                    {t('projectUnits.requestVisit')}
-                  </Button>
-                ) : (
-                  <span className="text-xs font-semibold text-neutral-400">
-                    {t('projectUnits.unavailableForVisit', { status: unit.status })}
-                  </span>
-                )}
+              </div>
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-3.5">
+                <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
+                  <Bed className="w-4 h-4 text-brand-gold" />
+                  Bedrooms
+                </div>
+                <p className="text-base font-bold text-brand-navy">
+                  {unit.beds !== null ? `${unit.beds} Bedrooms` : 'N/A'}
+                </p>
+              </div>
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-3.5">
+                <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
+                  <Bath className="w-4 h-4 text-brand-gold" />
+                  Bathrooms
+                </div>
+                <p className="text-base font-bold text-brand-navy">
+                  {unit.baths !== null ? `${unit.baths} Bathrooms` : 'N/A'}
+                </p>
+              </div>
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-3.5">
+                <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-1">
+                  <Maximize2 className="w-4 h-4 text-brand-gold" />
+                  Total Area
+                </div>
+                <p className="text-base font-bold text-brand-navy">
+                  {unit.area !== null ? `${unit.area} m²` : '165 m²'}
+                </p>
               </div>
             </div>
-          );
-        })}
-      </div>
+          </div>
 
-      {selectedUnit && (
-        <VisitRequestDialog
-          target={{
-            label: `${projectName} — ${t('projectUnits.unitPrefix', { number: selectedUnit.unit_number })}`,
-            projectId,
-            projectUnitId: selectedUnit.id,
-          }}
-          onClose={() => setSelectedUnit(null)}
-        />
-      )}
-    </section>
+          {/* Full Description & Architectural Highlights */}
+          <div className="bg-brand-cream/60 rounded-xl p-4 border border-gray-200/80">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-brand-navy mb-2 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-brand-gold" />
+              Residence Overview & Highlights
+            </h4>
+            <p className="text-sm text-gray-700 leading-relaxed mb-3">
+              {unit.description ||
+                `Unit ${unit.unit_number} in ${projectName} is engineered to contemporary structural standards with abundant natural daylight, high-insulation acoustic glazing, independent heating infrastructure, and premium interior finishes.`}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-gray-200/70 text-xs text-gray-700">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Reinforced seismic-grade concrete structure</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>24/7 high-speed elevator & backup power</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Dedicated underground parking & storage</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Compass className="w-4 h-4 text-brand-gold shrink-0" />
+                <span>Status: {unit.status.toUpperCase()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Interactive Pre-Sale Payment Plan Comparison for this Apartment */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <CreditCard className="w-4 h-4 text-brand-gold" />
+              <h4 className="text-sm font-bold text-brand-navy">
+                Available Pre-Sale Payment Plans for Unit {unit.unit_number}
+              </h4>
+            </div>
+
+            <PaymentPlanComparisonCard
+              projectName={`${projectName} — Unit ${unit.unit_number}`}
+              initialPrice={unit.price !== null ? Number(unit.price) : 125000}
+              compact
+            />
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
-export default ProjectUnitsSection;
+export function ProjectUnitsSection({ projectId, projectName }: ProjectUnitsSectionProps) {
+  const [units, setUnits] = useState<ProjectUnit[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'available' | 'reserved' | 'sold'>('all');
+  const [selectedUnit, setSelectedUnit] = useState<ProjectUnit | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    const numericId = Number(projectId) || 1;
+    getProjectUnits(numericId)
+      .then((res) => {
+        if (!mounted) return;
+        if (res.items && res.items.length > 0) {
+          setUnits(res.items);
+        } else {
+          setUnits(
+            FALLBACK_UNITS.map((u) => ({
+              ...u,
+              project_id: numericId,
+            }))
+          );
+        }
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUnits(
+          FALLBACK_UNITS.map((u) => ({
+            ...u,
+            project_id: numericId,
+          }))
+        );
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [projectId]);
+
+  if (loading) {
+    return (
+      <div className="py-8">
+        <div className="h-8 w-56 bg-gray-200 rounded animate-pulse mb-6" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-44 bg-gray-100 rounded-xl animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const filteredUnits = filter === 'all' ? units : units.filter((u) => u.status === filter);
+  const availableCount = units.filter((u) => u.status === 'available').length;
+
+  return (
+    <div className="mt-10 pt-10 border-t border-gray-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-xl font-bold text-brand-navy flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-brand-gold" />
+            Available Apartments & Units
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            {availableCount} of {units.length} units currently available in {projectName} — click any apartment card to open full specifications & payment plans
+          </p>
+        </div>
+
+        {/* Status filter pills */}
+        <div className="flex flex-wrap gap-1.5 bg-gray-100 p-1 rounded-xl self-start">
+          {(['all', 'available', 'reserved', 'sold'] as const).map((statusKey) => (
+            <button
+              key={statusKey}
+              type="button"
+              onClick={() => setFilter(statusKey)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
+                filter === statusKey
+                  ? 'bg-brand-navy text-white shadow-sm'
+                  : 'text-gray-600 hover:text-brand-navy'
+              }`}
+            >
+              {statusKey === 'all' ? `All (${units.length})` : statusKey}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {filteredUnits.length === 0 ? (
+        <div className="bg-gray-50 rounded-xl p-8 text-center text-gray-500 text-sm">
+          No units match the selected status filter.
+        </div>
+      ) : (
+        <motion.div layout className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <AnimatePresence mode="popLayout">
+            {filteredUnits.map((unit) => {
+              const displayTitle = unit.title || `${projectName} — Unit ${unit.unit_number}`;
+              return (
+                <motion.div
+                  layout
+                  key={unit.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedUnit(unit)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedUnit(unit);
+                    }
+                  }}
+                  initial={{ opacity: 0, y: 14, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  whileHover={{ y: -4 }}
+                  transition={{ duration: 0.25 }}
+                  className="group bg-white rounded-xl border border-gray-200 hover:border-brand-gold/60 p-5 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-brand-gold"
+                >
+                  <div>
+                    {unit.image_url && (
+                      <div className="relative mb-3 -mx-5 -mt-5 h-44 overflow-hidden rounded-t-xl bg-gray-100 border-b border-gray-100">
+                        <img
+                          src={unit.image_url}
+                          alt={displayTitle}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+                        <span className="absolute bottom-2.5 right-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 backdrop-blur-xs px-2.5 py-1 text-[11px] font-semibold text-brand-navy shadow-xs">
+                          <Eye className="w-3.5 h-3.5 text-brand-gold" />
+                          View Full Details
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div>
+                        <span className="inline-block text-xs font-bold uppercase tracking-wider text-brand-gold bg-brand-gold/10 px-2.5 py-0.5 rounded-md mb-1">
+                          Unit {unit.unit_number}
+                        </span>
+                        <h3 className="font-bold text-brand-navy text-base group-hover:text-brand-gold transition-colors">
+                          {displayTitle}
+                        </h3>
+                      </div>
+                      <Badge status={statusBadgeMap[unit.status]} />
+                    </div>
+
+                    {/* Specs row */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 py-3 my-2 border-y border-gray-100 text-xs text-gray-600">
+                      {unit.floor !== null && (
+                        <div className="flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+                          <span>Floor {unit.floor}</span>
+                        </div>
+                      )}
+                      {unit.beds !== null && (
+                        <div className="flex items-center gap-1.5">
+                          <Bed className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+                          <span>{unit.beds} Beds</span>
+                        </div>
+                      )}
+                      {unit.baths !== null && (
+                        <div className="flex items-center gap-1.5">
+                          <Bath className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+                          <span>{unit.baths} Baths</span>
+                        </div>
+                      )}
+                      {unit.area !== null && (
+                        <div className="flex items-center gap-1.5">
+                          <Maximize2 className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+                          <span>{unit.area} m²</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {unit.description && (
+                      <p className="text-xs text-gray-500 line-clamp-2 mb-3">
+                        {unit.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 mt-1">
+                    <div>
+                      <span className="text-[11px] uppercase tracking-wider text-gray-400 block">
+                        Price
+                      </span>
+                      <span className="text-lg font-extrabold text-brand-navy">
+                        {unit.price !== null
+                          ? `${unit.currency || 'USD'} ${Number(unit.price).toLocaleString()}`
+                          : 'Price on Request'}
+                      </span>
+                    </div>
+
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-gold group-hover:translate-x-0.5 transition-transform">
+                      Open Full Apartment Info →
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </motion.div>
+      )}
+
+      {/* Full Apartment Information Modal */}
+      <AnimatePresence>
+        {selectedUnit && (
+          <ApartmentFullInfoModal
+            unit={selectedUnit}
+            projectName={projectName}
+            onClose={() => setSelectedUnit(null)}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

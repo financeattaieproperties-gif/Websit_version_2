@@ -1,7 +1,8 @@
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { SlidersHorizontal, Bed, Bath, Maximize2, Layers, MapPin, CalendarDays, Building2, ArrowUpRight, MessageSquare, LayoutGrid, Map as MapIcon, Columns2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import gsap from 'gsap';
+import { SlidersHorizontal, Bed, Bath, Maximize2, Layers, MapPin, Building2, Eye, LayoutGrid, Map as MapIcon, Columns2, X, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Navbar } from '../components/layout/Navbar';
 import { Footer } from '../components/layout/Footer';
@@ -10,8 +11,7 @@ import { FilterSidebar, FilterState } from '../components/property/FilterSidebar
 import { PropertyCard } from '../components/ui/PropertyCard';
 import { ProjectCard } from '../components/ui/ProjectCard';
 import { PropertyCardSkeleton } from '../components/ui/PropertyCardSkeleton';
-import { VisitRequestDialog, type VisitTarget } from '../components/forms/VisitRequestDialog';
-import { QuickContactModal } from '../components/forms/QuickContactModal';
+import { ApartmentFullInfoModal } from '../components/project/ProjectUnitsSection';
 import { AttaieGoogleMap, type MapPropertyItem } from '../components/map/AttaieGoogleMap';
 import {
   getProperties,
@@ -39,23 +39,29 @@ const defaultFilters: FilterState = {
 
 function ProjectUnitInventoryCard({
   unit,
-  onRequestVisit,
 }: {
   unit: ProjectUnit;
-  onRequestVisit: (target: VisitTarget) => void;
 }) {
   const { t } = useTranslation();
-  const [quickContactOpen, setQuickContactOpen] = useState(false);
+  const [selectedUnitOpen, setSelectedUnitOpen] = useState(false);
   const projectLabel = unit.project_name || `Project #${unit.project_id}`;
-  const unitHref = `/projects/${unit.project_id}#unit-${unit.id}`;
-  const bookable = !['sold', 'rented'].includes(unit.status);
   const unitTitle = unit.title || `${projectLabel} — ${t('projectUnits.unitPrefix', { number: unit.unit_number })}`;
-  const priceDisplay = unit.price !== null ? `$${Number(unit.price).toLocaleString()}` : 'Price on request';
 
   return (
     <>
-      <div className="group bg-white rounded-2xl overflow-hidden border border-brand-navy/8 shadow-brand-sm hover:shadow-brand-lg transition-all duration-300 flex flex-col h-full">
-        <Link to={unitHref} className="relative block aspect-[16/10] overflow-hidden bg-brand-navy">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setSelectedUnitOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setSelectedUnitOpen(true);
+          }
+        }}
+        className="group bg-white rounded-2xl overflow-hidden border border-brand-navy/8 hover:border-brand-gold/60 shadow-brand-sm hover:shadow-brand-lg transition-all duration-300 flex flex-col h-full cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-brand-gold"
+      >
+        <div className="relative block aspect-[16/10] overflow-hidden bg-brand-navy">
           {unit.image_url ? (
             <img
               src={unit.image_url}
@@ -80,19 +86,21 @@ function ProjectUnitInventoryCard({
             <span className="text-xs font-bold bg-black/50 backdrop-blur-xs px-2.5 py-1 rounded-lg">
               {projectLabel} · {t('projectUnits.unitPrefix', { number: unit.unit_number })}
             </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold text-brand-navy shadow-xs">
+              <Eye size={12} className="text-brand-gold" />
+              Full Info
+            </span>
           </div>
-        </Link>
+        </div>
 
         <div className="p-5 flex-1 flex flex-col justify-between">
           <div>
             <p className="text-xs font-bold text-brand-gold uppercase tracking-wider mb-1">
               {projectLabel}
             </p>
-            <Link to={unitHref} className="block group-hover:text-brand-gold transition-colors">
-              <h3 className="text-lg font-bold text-brand-navy line-clamp-1">
-                {unitTitle}
-              </h3>
-            </Link>
+            <h3 className="text-lg font-bold text-brand-navy line-clamp-1 group-hover:text-brand-gold transition-colors">
+              {unitTitle}
+            </h3>
             {unit.project_location && (
               <p className="mt-1.5 flex items-center gap-1.5 text-xs text-neutral-500">
                 <MapPin size={13} className="text-brand-gold shrink-0" />
@@ -149,57 +157,22 @@ function ProjectUnitInventoryCard({
                 <p className="text-sm font-semibold text-neutral-500">Price on request</p>
               )}
             </div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => setQuickContactOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-navy px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-gold transition-colors"
-              >
-                <MessageSquare size={13} />
-                <span>Inquire Now</span>
-              </button>
-              {bookable && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    onRequestVisit({
-                      label: `${projectLabel} — ${t('projectUnits.unitPrefix', { number: unit.unit_number })}`,
-                      projectId: unit.project_id,
-                      projectUnitId: unit.id,
-                    })
-                  }
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-brand-gold px-3 py-1.5 text-xs font-bold text-brand-gold hover:bg-brand-gold hover:text-white transition-colors"
-                >
-                  <CalendarDays size={13} />
-                  {t('projectUnits.requestVisit')}
-                </button>
-              )}
-              <Link
-                to={unitHref}
-                className="inline-flex items-center gap-1 rounded-lg bg-neutral-100 px-2.5 py-1.5 text-xs font-bold text-brand-navy hover:bg-neutral-200 transition-colors"
-                title={t('projectUnits.viewInProject', { project: projectLabel })}
-              >
-                <ArrowUpRight size={14} />
-              </Link>
-            </div>
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-gold group-hover:translate-x-0.5 transition-transform">
+              Open Full Apartment Info →
+            </span>
           </div>
         </div>
       </div>
 
-      <QuickContactModal
-        open={quickContactOpen}
-        onClose={() => setQuickContactOpen(false)}
-        property={{
-          id: `unit-${unit.id}`,
-          serialNumber: unit.unit_number,
-          title: unitTitle,
-          priceDisplay,
-          location: unit.project_location || 'Kabul, Afghanistan',
-          type: 'Project Apartment',
-          listingType: 'sale',
-          image: unit.image_url,
-        }}
-      />
+      <AnimatePresence>
+        {selectedUnitOpen && (
+          <ApartmentFullInfoModal
+            unit={unit}
+            projectName={projectLabel}
+            onClose={() => setSelectedUnitOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }
@@ -214,6 +187,8 @@ function PropertiesContent() {
   const initialPurpose: FilterState['purpose'] =
     initialPurposeParam === 'rent' || initialPurposeParam === 'commercial' ? initialPurposeParam : 'buy';
   const initialTypeParam = searchParams.get('type');
+  const initialBedsParam = searchParams.get('beds');
+  const initialMaxPriceParam = Number(searchParams.get('maxPrice') || 0);
 
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [allProjectUnits, setAllProjectUnits] = useState<ProjectUnit[]>([]);
@@ -222,14 +197,31 @@ function PropertiesContent() {
     ...defaultFilters,
     purpose: initialPurpose,
     type: initialTypeParam ? [initialTypeParam] : [],
+    beds: initialBedsParam ? [initialBedsParam === '6+' ? '5+' : initialBedsParam] : [],
+    maxPrice: initialMaxPriceParam > 0 ? initialMaxPriceParam : defaultFilters.maxPrice,
   }));
   const [searchQuery, setSearchQuery] = useState(
     () => searchParams.get('search') ?? searchParams.get('serial_number') ?? ''
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [visitTarget, setVisitTarget] = useState<VisitTarget | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'split' | 'map'>('grid');
+  const heroHeaderRef = useRef<HTMLDivElement>(null);
+
+  // Minimal GSAP header entrance
+  useEffect(() => {
+    if (!heroHeaderRef.current) return;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        heroHeaderRef.current,
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.55, ease: 'power2.out' }
+      );
+    }, heroHeaderRef);
+    return () => ctx.revert();
+  }, []);
 
   const loadData = useCallback(() => {
     setLoading(true);
@@ -459,7 +451,7 @@ function PropertiesContent() {
       <div className="relative bg-brand-navy pt-32 pb-16 overflow-hidden">
         <div className="absolute inset-0 islamic-pattern" />
         <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-brand-gold/40 to-transparent" />
-        <div className="container-custom relative z-10">
+        <div ref={heroHeaderRef} className="container-custom relative z-10">
           <Breadcrumbs
             variant="light"
             items={[
@@ -566,7 +558,7 @@ function PropertiesContent() {
               </div>
             )}
 
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-1 h-6 bg-brand-gold rounded-full" />
                 <AnimatePresence mode="wait">
@@ -576,7 +568,7 @@ function PropertiesContent() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 8 }}
                     transition={{ duration: 0.2 }}
-                    className="text-lg font-bold text-brand-navy"
+                    className="text-lg font-bold text-brand-navy tabular-nums"
                   >
                     {loading
                       ? 'Loading…'
@@ -586,6 +578,58 @@ function PropertiesContent() {
                   </motion.h2>
                 </AnimatePresence>
               </div>
+
+              {/* 21st.dev + Motion.dev Interactive Filter Transition Bar */}
+              {!isProjects &&
+                (searchQuery.trim() ||
+                  filters.type.length > 0 ||
+                  filters.beds.length > 0 ||
+                  filters.status.length > 0) && (
+                  <motion.div
+                    layout
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex flex-wrap items-center gap-2"
+                  >
+                    {searchQuery.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => handleSearchChange('')}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-brand-navy text-white text-xs font-semibold hover:bg-brand-gold transition-colors cursor-pointer"
+                      >
+                        <span>“{searchQuery.trim()}”</span>
+                        <X size={12} />
+                      </button>
+                    )}
+                    {filters.type.map((tItem) => (
+                      <button
+                        key={tItem}
+                        type="button"
+                        onClick={() =>
+                          setFilters((prev) => ({
+                            ...prev,
+                            type: prev.type.filter((x) => x !== tItem),
+                          }))
+                        }
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white border border-brand-navy/15 text-brand-navy text-xs font-semibold hover:border-brand-gold transition-colors cursor-pointer"
+                      >
+                        <span>{tItem}</span>
+                        <X size={12} />
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilters(defaultFilters);
+                        handleSearchChange('');
+                      }}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-brand-gold hover:underline cursor-pointer ml-1"
+                    >
+                      <RotateCcw size={12} />
+                      <span>Reset all</span>
+                    </button>
+                  </motion.div>
+                )}
             </div>
 
             {viewMode === 'map' ? (
@@ -699,6 +743,7 @@ function PropertiesContent() {
                                 type={prop.type}
                                 listingType={prop.listing_type}
                                 image={prop.image_url}
+                                galleryImages={prop.gallery_images}
                               />
                             </motion.div>
                           ))}
@@ -712,7 +757,6 @@ function PropertiesContent() {
                             >
                               <ProjectUnitInventoryCard
                                 unit={unit}
-                                onRequestVisit={setVisitTarget}
                               />
                             </motion.div>
                           ))}
@@ -738,13 +782,6 @@ function PropertiesContent() {
           </div>
         </div>
       </div>
-
-      {visitTarget && (
-        <VisitRequestDialog
-          target={visitTarget}
-          onClose={() => setVisitTarget(null)}
-        />
-      )}
 
       <Footer />
     </main>

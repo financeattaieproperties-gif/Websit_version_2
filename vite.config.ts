@@ -1145,6 +1145,7 @@ export default defineConfig(({ mode }) => {
   return {
     define: {
       'process.env.GOOGLE_MAPS_PLATFORM_KEY': JSON.stringify(gmpKey),
+      'import.meta.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(gmpKey),
     },
     plugins: [
       react(),
